@@ -1,0 +1,74 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+class Record {
+ +id
+ +nature
+ +occurredOn
+ +occurredTimeLocal?
+ +description
+}
+class Contract {
+ +id
+ +kind
+ +status
+}
+class Obligation {
+ +id
+ +dueOn
+ +plannedSettlementOn?
+ +amountMinor
+ +status
+}
+class Settlement {
+ +id
+ +settledOn
+ +settledTimeLocal?
+ +amountMinor
+}
+class ReversalEvent {
+ +id
+ +sourceRecordId
+ +type
+ +amountMinor
+ +status
+}
+class RecurrenceRule {
+ +id
+ +kind
+ +anchorOn
+ +endOn?
+ +count?
+ +version
+}
+class RecurrenceException {
+ +id
+ +occurrenceKey
+ +action
+ +overrides
+}
+class Occurrence {
+ +key
+ +expectedOn
+ +actualOn?
+ +state
+}
+class Account {
+ +id
+ +type
+ +liquidity
+}
+RecurrenceRule "1" -- "0..*" Occurrence : gera virtualmente
+RecurrenceRule "1" -- "0..*" RecurrenceException
+Occurrence "0..1" --> "0..*" Record : associa
+Record "1" -- "0..*" Obligation
+Record "1" -- "0..*" ReversalEvent : origem
+Contract "0..1" -- "0..*" Obligation
+Obligation "0..1" -- "0..*" Settlement
+Settlement "*" --> "1" Account : afeta caixa
+ReversalEvent "0..1" --> "0..*" Settlement : confirmação
+note right of ReversalEvent
+Reembolso previsto não é
+liquidação efetiva.
+end note
+@enduml

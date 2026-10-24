@@ -1,0 +1,21 @@
+@startuml
+skinparam shadowing false
+[*] --> Desbloqueio
+Desbloqueio --> Inicio : senha / biometria
+Inicio --> Movimentacoes
+Inicio --> Planejamento
+Inicio --> Patrimonio
+Inicio --> Registrar
+Movimentacoes --> Detalhes
+Detalhes --> Registrar : Editar
+Detalhes --> Acoes : Estornar / pagar / cancelar / adiar
+Acoes --> Alcance : se originada de série
+Alcance --> Detalhes : confirmar
+Registrar --> Movimentacoes : salvar
+Planejamento --> Ocorrencias
+Ocorrencias --> Acoes
+Patrimonio --> Relatorios
+Inicio --> Configuracoes
+Configuracoes --> Backup
+Inicio --> [*] : bloquear
+@enduml

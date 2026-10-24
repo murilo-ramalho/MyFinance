@@ -1,0 +1,25 @@
+@startuml
+hide empty description
+[*] --> Prevista
+Prevista --> Pendente : obrigação firmada / ocorrência chegou
+Prevista --> Ignorada : compra opcional não realizada
+Prevista --> Cancelada : encerrada antes do fato
+Prevista --> Realizada : evento voluntário realizado
+Pendente --> Parcial : liquidação parcial
+Pendente --> Liquidada : pagamento integral
+Parcial --> Liquidada : quitar restante
+Pendente --> Dispensada : dispensa confirmada
+Parcial --> Dispensada : dispensa do saldo devido
+Liquidada --> Reembolsada : evento de reversão confirmado
+Realizada --> Reembolsada : devolução vinculada
+Liquidada --> [*]
+Reembolsada --> [*]
+Ignorada --> [*]
+Cancelada --> [*]
+Dispensada --> [*]
+note bottom
+Os estados de obrigação e ocorrência são
+conceitos distintos; diagrama é uma visão
+simplificada de processos, não um enum único.
+end note
+@enduml

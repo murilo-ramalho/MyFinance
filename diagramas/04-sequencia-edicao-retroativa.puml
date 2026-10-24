@@ -1,0 +1,32 @@
+@startuml
+title Editar gasto retroativo e recalcular saldo
+actor Usuario
+boundary "Editor universal" as UI
+control "EditarRegistro" as UC
+entity "Regras de domínio" as DOM
+control "Transação SQLite" as DB
+control "Motor de projeções" as PROJ
+collections "Cache/visões" as CACHE
+Usuario -> UI : Editar gasto 100 → 130\ne data anterior
+UI -> UC : comando validado
+UC -> DB : iniciar transação
+UC -> DB : ler original e vínculos
+DB --> UC : registro, liquidações, versões
+UC -> DOM : validar delta e impactos
+DOM --> UC : mudanças consistentes + datas
+UC -> DB : atualizar e gravar revisão
+UC -> DB : invalidar versão de projeção
+alt erro de persistência
+  DB --> UC : erro
+  UC -> DB : rollback
+  UC --> UI : falha, estado intacto
+else sucesso
+  UC -> DB : commit
+  UC -> PROJ : recalcular desde data afetada
+  PROJ -> DB : ler fatos e regras
+  DB --> PROJ : eventos ordenados
+  PROJ -> CACHE : atualizar saldos derivados
+  UC --> UI : resumo do impacto
+  UI --> Usuario : fechamento e futuro atualizados
+end
+@enduml

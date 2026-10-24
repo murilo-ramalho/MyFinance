@@ -1,0 +1,38 @@
+@startuml
+title Desbloqueio criptográfico local
+actor Usuario
+boundary "Tela bloqueada" as UI
+control "VaultUnlock" as VAULT
+control "KDF/Keychain/Keystore" as OS
+control "SQLCipher adapter" as SQL
+database "Cofre criptografado" as DB
+Usuario -> UI : nome + senha OU biometria
+UI -> VAULT : solicitar desbloqueio
+alt senha
+  VAULT -> OS : derivar KEK a partir de senha + salt
+  OS --> VAULT : KEK
+  VAULT -> VAULT : AEAD unwrap(DEK)
+else biometria
+  VAULT -> OS : operação com chave nativa\nprotegida por autenticação
+  OS --> VAULT : DEK validada ou erro
+end
+alt segredo inválido/indisponível
+  VAULT --> UI : falha fechada
+else DEK validada
+  VAULT -> SQL : abrir com DEK
+  SQL -> SQL : verificar cipher_version
+  alt cipher ausente ou chave rejeitada
+    SQL --> VAULT : erro
+    VAULT --> UI : continuar bloqueado
+  else cipher presente
+    SQL -> DB : consulta de verificação real
+    DB --> SQL : íntegro
+    SQL --> VAULT : sessão autorizada
+    VAULT --> UI : liberar interface
+  end
+end
+note right of VAULT
+`success` do prompt sozinho
+não libera o DB.
+end note
+@enduml

@@ -1,0 +1,18 @@
+@startuml
+title Máquina de estados — ocorrência de recorrência
+[*] --> Prevista : regra gera projeção
+Prevista --> Vencida : data passa sem realização
+Prevista --> Realizada : confirmar execução
+Vencida --> Realizada : confirmar execução tardia
+Prevista --> Cancelada : cancelar ocorrência
+Vencida --> Cancelada : cancelar/dispensar
+Realizada --> Corrigida : ajustar data/custo real
+Corrigida --> Realizada : registrar revisão
+Realizada --> [*] : criar próxima PREVISÃO com base na execução
+Cancelada --> [*] : seguir política da regra
+note right of Realizada
+Próxima data pós-execução =
+data REAL + intervalo,
+não data originalmente prevista.
+end note
+@enduml

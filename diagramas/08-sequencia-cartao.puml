@@ -1,0 +1,24 @@
+@startuml
+title Compra no cartão, obrigação e pagamento sem dupla contagem
+actor Usuario
+boundary "Formulário" as UI
+control "RegistrarCompra" as UC
+entity "Compras / Obrigações" as FACT
+control "Caixa / Contas" as CASH
+control "Relatórios" as REP
+Usuario -> UI : Compra de R$ 1.200\n12 x R$ 100 no cartão
+UI -> UC : criar compra e parcelas
+UC -> FACT : gravar fato econômico R$ 1.200
+UC -> FACT : criar 12 obrigações de R$ 100
+UC -> REP : consumo = R$ 1.200 na data da compra
+note right of CASH
+Banco NÃO diminui
+no momento da compra.
+end note
+... no vencimento da primeira fatura ...
+Usuario -> UI : confirmar pagamento R$ 100
+UI -> UC : liquidar obrigação
+UC -> CASH : baixar banco em R$ 100
+UC -> FACT : reduzir passivo do cartão em R$ 100
+UC -> REP : atualizar fluxo de caixa, não duplicar consumo
+@enduml

@@ -1,0 +1,51 @@
+@startuml
+title Casos de uso — Cofre Financeiro Local
+left to right direction
+skinparam packageStyle rectangle
+actor "Usuário local" as U
+actor "SO móvel\n(Keystore/biometria/arquivos)" as SO
+rectangle "Aplicativo offline" {
+ usecase "Criar cofre local" as UC0
+ usecase "Desbloquear por senha" as UC1
+ usecase "Desbloquear por biometria" as UC2
+ usecase "Registrar/editar/anular\nmovimento" as UC3
+ usecase "Planejar expectativa" as UC4
+ usecase "Confirmar ocorrência" as UC5
+ usecase "Gerenciar contas\ne reservas" as UC6
+ usecase "Gerenciar cartão\ne parcelas" as UC7
+ usecase "Projetar saldos\ndiários e mensais" as UC8
+ usecase "Ver gasto seguro" as UC9
+ usecase "Ver orçamentos e\nmini relatórios" as UC10
+ usecase "Gerenciar itens,\nativos e projetos" as UC11
+ usecase "Exportar backup cifrado" as UC12
+ usecase "Restaurar backup" as UC13
+ usecase "Importar lançamentos" as UC14
+ usecase "Recalcular períodos\nafetados" as UC15
+}
+U --> UC0
+U --> UC1
+U --> UC2
+U --> UC3
+U --> UC4
+U --> UC5
+U --> UC6
+U --> UC7
+U --> UC8
+U --> UC9
+U --> UC10
+U --> UC11
+U --> UC12
+U --> UC13
+U --> UC14
+UC3 .> UC15 : <<include>>
+UC5 .> UC15 : <<include>>
+UC9 .> UC8 : <<include>>
+SO --> UC0
+SO --> UC2
+SO --> UC12
+SO --> UC13
+note right of UC8
+Projeção derivada;
+pode ser negativa.
+end note
+@enduml

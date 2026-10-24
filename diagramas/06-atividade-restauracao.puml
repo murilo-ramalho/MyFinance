@@ -1,0 +1,38 @@
+@startuml
+title Restauração de backup portátil
+start
+:Reautenticar e escolher arquivo;
+:Validar magic, tamanho, versão e limites;
+if (Arquivo suportado?) then (sim)
+  :Derivar chave com senha de backup;
+  :Verificar tag AEAD e integridade;
+  if (Senha/arquivo válidos?) then (sim)
+    :Ler manifesto e snapshot em ambiente isolado;
+    :Validar schema e migrações em cópia;
+    if (Dados consistentes?) then (sim)
+      :Exibir prévia e impacto;
+      if (Usuário confirmou?) then (sim)
+        :Preparar rollback cifrado;
+        :Fechar conexão antiga;
+        :Trocar cofre de forma atômica;
+        :Reabrir e verificar saldo/consistência;
+        if (Verificação final OK?) then (sim)
+          :Marcar restauração concluída;
+        else (não)
+          :Reverter para cofre anterior;
+        endif
+      else (não)
+        :Descartar temporários;
+      endif
+    else (não)
+      :Rejeitar mantendo cofre original;
+    endif
+  else (não)
+    :Rejeitar mantendo cofre original;
+  endif
+else (não)
+  :Rejeitar mantendo cofre original;
+endif
+:Limpar arquivos temporários sensíveis;
+stop
+@enduml

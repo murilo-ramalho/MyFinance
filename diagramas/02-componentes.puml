@@ -1,0 +1,38 @@
+@startuml
+title Componentes e fronteiras — monólito local
+skinparam componentStyle rectangle
+package "Aplicativo móvel (um processo)" {
+  [Interface e navegação] as UI
+  [Casos de uso] as UC
+  package "Domínio independente de UI/SQLite" {
+    [Regras financeiras] as FIN
+    [Recorrências e datas] as REC
+    [Projeções determinísticas] as PROJ
+    [Orçamentos e relatórios] as REP
+  }
+  package "Infraestrutura local" {
+    [Repositórios e transações] as DBR
+    database "SQLite + SQLCipher" as DB
+    [Cofre e Key Wrapping] as KEY
+    [Backup criptografado] as BAK
+    [Serviços de plataforma] as OS
+  }
+}
+UI --> UC
+UC --> FIN
+UC --> REC
+UC --> PROJ
+UC --> REP
+UC --> DBR
+PROJ --> FIN
+PROJ --> REC
+REP --> PROJ
+DBR --> DB
+KEY --> OS : chaves nativas
+BAK --> DBR : snapshot consistente
+BAK --> OS : compartilhar/importar
+UC --> KEY : sessão / cofre
+note bottom of DB
+Fail closed se SQLCipher ausente
+end note
+@enduml

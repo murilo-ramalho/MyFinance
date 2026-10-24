@@ -1,0 +1,34 @@
+@startuml
+left to right direction
+skinparam shadowing false
+actor "Usuário local" as U
+rectangle "Cofre — Casos de uso v2" {
+  usecase "Consultar mês atual\ne próximo" as UC1
+  usecase "Filtrar movimentações\npor mês/data/hora" as UC2
+  usecase "Registrar ou editar\ncompra, receita, previsão" as UC3
+  usecase "Registrar pagamento\nparcial/antecipado/atrasado" as UC4
+  usecase "Estornar / aguardar\nreembolso" as UC5
+  usecase "Criar recorrência\ncondicional/limitada" as UC6
+  usecase "Alterar ocorrência /\n série por alcance" as UC7
+  usecase "Cancelar compromisso\nconfirmado" as UC8
+  usecase "Consultar saldos,\npatrimônio e mini relatórios" as UC9
+  usecase "Exportar / restaurar\nbackup criptografado" as UC10
+}
+U --> UC1
+U --> UC2
+U --> UC3
+U --> UC4
+U --> UC5
+U --> UC6
+U --> UC7
+U --> UC8
+U --> UC9
+U --> UC10
+UC5 ..> UC3 : <<extend>>
+UC7 ..> UC6 : <<extend>>
+UC8 ..> UC7 : <<extend>>
+note bottom of UC8
+Somente anota cancelamento no app;
+não cancela contrato externo.
+end note
+@enduml

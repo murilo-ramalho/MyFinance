@@ -1,0 +1,11 @@
+{
+  "meta": {"currency": "BRL", "moneyUnit": "minor", "version": "2.0", "note": "Amostras didáticas, não dados reais persistidos"},
+  "examples": [
+    {"id":"OCT-01", "opening":-1988, "inflow":242000, "outflow":209121, "expectedClosing":30891},
+    {"id":"NOV-01", "opening":30891, "inflow":241000, "outflow":194212, "expectedClosing":77679},
+    {"id":"FOOD-01", "planned":60000, "actual":63600, "expectedDifference":3600},
+    {"id":"PRINT-01", "sale":12000, "productionCost":8487, "expectedGrossProfit":3513},
+    {"id":"PRINT-02", "sale":14000, "productionCost":9032, "expectedGrossProfit":4968},
+    {"id":"REFUND-01", "purchaseMinor":-16900, "refundMinor":16900, "expectedNetMinor":0}
+  ]
+}

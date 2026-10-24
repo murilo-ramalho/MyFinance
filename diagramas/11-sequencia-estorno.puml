@@ -1,0 +1,21 @@
+@startuml
+actor Usuario
+boundary "Detalhes de registro" as UI
+control "RefundUseCase" as UC
+control "Regras financeiras" as Domain
+database "SQLite SQLCipher" as DB
+control "Projeções" as Projection
+Usuario -> UI : Estornar compra paga
+UI -> UC : valor, destino, data, status
+UC -> Domain : validar elegibilidade e valor remanescente
+Domain --> UC : efeitos esperados
+alt Reembolso apenas prometido
+  UC -> DB : registrar recebível vinculado (transação)
+else Crédito recebido
+  UC -> DB : registrar reversão + liquidação (transação)
+end
+DB --> UC : commit
+UC -> Projection : invalidar datas/contas impactadas
+UC --> UI : compra intacta + status de reversão
+UI --> Usuario : exibir mudança com histórico
+@enduml

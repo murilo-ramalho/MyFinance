@@ -1,0 +1,91 @@
+@startuml
+title Modelo de domínio — relações nucleares (conceitual)
+skinparam classAttributeIconSize 0
+class Conta {
+  +id: ID
+  +tipo: TipoConta
+  +moeda: Moeda
+  +saldoAbertura: Money
+}
+class Envelope {
+  +id: ID
+  +politicaProtecao: Politica
+  +meta: Money
+}
+class AlocacaoEnvelope {
+  +valor: Money
+  +data: LocalDate
+}
+class Registro {
+  +id: ID
+  +tipo: TipoRegistro
+  +ocorridoEm: LocalDate
+  +criadoEm: Instant
+  +status: Status
+}
+class Obrigacao {
+  +valor: Money
+  +vencimentoEm: LocalDate
+  +status: StatusObrigacao
+}
+class Liquidacao {
+  +valor: Money
+  +liquidadoEm: LocalDate
+}
+class RegraRecorrencia {
+  +modo: TipoRegra
+  +intervalo: Periodo
+  +versao: int
+}
+class ExecucaoRecorrencia {
+  +previstoEm: LocalDate
+  +realizadoEm: LocalDate?
+}
+class Orcamento {
+  +mes: YearMonth
+  +previsto: Money
+}
+class PrevisaoOriginal {
+  +capturadoEm: Instant
+  +cenario: Cenario
+}
+class ItemCompra {
+  +quantidade: Decimal
+  +unidade: Unidade
+  +custo: Money
+}
+class Ativo {
+  +tipo: TipoAtivo
+  +moeda: Moeda
+}
+class EventoAtivo {
+  +tipo: TipoEventoAtivo
+  +valor: Money
+  +quantidade: Decimal
+}
+class RevisaoRegistro {
+  +antes: Snapshot
+  +depois: Snapshot
+  +alteradoEm: Instant
+}
+Conta "1" -- "*" Liquidacao
+Registro "1" -- "0..*" Obrigacao
+Registro "1" -- "0..*" ItemCompra
+Registro "1" -- "0..*" RevisaoRegistro
+Obrigacao "0..1" -- "0..*" Liquidacao
+Envelope "1" -- "*" AlocacaoEnvelope
+Conta "1" -- "*" AlocacaoEnvelope
+RegraRecorrencia "1" -- "*" ExecucaoRecorrencia
+ExecucaoRecorrencia "0..1" -- "0..1" Registro : confirmado por
+Orcamento .. PrevisaoOriginal : base/revisões
+Ativo "1" -- "*" EventoAtivo
+note right of Envelope
+Não soma patrimônio novo.
+Só aloca saldo de Conta.
+end note
+note bottom of Registro
+Compra e liquidação são datas
+independentes. Planejamento não
+é dinheiro liquidado.
+end note
+@enduml

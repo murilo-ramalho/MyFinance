@@ -1,0 +1,33 @@
+@startuml
+start
+:Selecionar ocorrência ou série;
+:Selecionar alcance
+(somente esta / esta e próximas /
+todas pendentes / regra inteira);
+:Resolver ocorrências e obrigações afetadas;
+if (Há pagamentos realizados?) then (sim)
+  :Preservar liquidações e histórico;
+endif
+if (Existem obrigações confirmadas?) then (sim)
+  :Exigir informação de dispensa,
+renegociação ou cancelamento contratual;
+  if (Dispensa confirmada?) then (não)
+    :Não apagar obrigação;
+    :Oferecer reagendamento / pagamento;
+    stop
+  endif
+endif
+:Mostrar prévia, valores, períodos e riscos;
+if (Usuário confirma?) then (não)
+  stop
+endif
+:Validar, aplicar exceções e cancelamentos
+em transação atômica;
+if (Commit concluído?) then (não)
+  :Rollback integral;
+  stop
+endif
+:Invalidar projeções impactadas;
+:Exibir histórico e novo saldo;
+stop
+@enduml

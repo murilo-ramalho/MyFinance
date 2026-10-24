@@ -1,0 +1,18 @@
+@startuml
+actor Usuario
+boundary "Pagamento de parcela" as UI
+control "SettlementUseCase" as App
+database "SQLite SQLCipher" as DB
+control "Fluxo de caixa diário" as Cash
+Usuario -> UI : Pagar parcela (venc. 10/11)
+UI -> App : confirmar R$ 100 em 28/10
+App -> DB : transação: registrar settlement
+note right of DB
+Preserva due_on = 10/11
+settled_on = 28/10
+end note
+DB --> App : commit
+App -> Cash : invalidar desde 28/10
+Cash --> UI : outubro −R$100; novembro sem pagamento pendente
+UI --> Usuario : parcela liquidada antecipadamente
+@enduml
