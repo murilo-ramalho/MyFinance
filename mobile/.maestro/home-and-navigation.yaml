@@ -1,0 +1,24 @@
+appId: com.cofre.mobiletest
+name: Home and default month navigation
+tags:
+  - smoke
+  - android
+---
+- launchApp:
+    clearState: true
+- assertVisible: 'TESTE · dados fictícios, só na memória'
+- assertVisible: 'Mês atual · inclui previsões'
+- assertVisible: 'Próximo mês · projeção'
+- tapOn:
+    id: tab-movements
+- assertVisible: Movimentações
+- assertVisible:
+    id: show-current-month-button
+- assertVisible:
+    id: show-next-month-button
+- tapOn:
+    id: show-next-month-button
+- assertVisible: 'Salário · previsão'
+- tapOn:
+    id: show-current-month-button
+- assertVisible: 'Salário de demonstração'

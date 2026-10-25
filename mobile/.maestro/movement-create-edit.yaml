@@ -1,0 +1,29 @@
+appId: com.cofre.mobiletest
+name: Create and reopen a demo movement
+tags:
+  - smoke
+  - android
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: tab-movements
+- tapOn:
+    id: add-movement-button
+- tapOn:
+    id: movement-title-input
+- inputText: 'Compra E2E'
+- tapOn:
+    id: movement-amount-input
+- inputText: '25,90'
+- hideKeyboard
+- tapOn:
+    id: movement-save-button
+- assertVisible:
+    id: movement-row-test-1
+- assertVisible: 'Compra E2E'
+- tapOn:
+    id: movement-row-test-1
+- assertVisible: 'Ajustar lançamento'
+- assertVisible: 'Compra E2E'
+- assertVisible: '25,90'

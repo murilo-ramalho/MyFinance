@@ -1,0 +1,29 @@
+appId: com.cofre.mobiletest
+name: Reject invalid demo movement input
+tags:
+  - regression
+  - android
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: add-movement-button
+- tapOn:
+    id: movement-save-button
+- assertVisible: 'Informe uma descrição.'
+- tapOn:
+    id: movement-title-input
+- inputText: 'Data inválida E2E'
+- tapOn:
+    id: movement-amount-input
+- inputText: '10,00'
+- tapOn:
+    id: movement-event-date-input
+- eraseText: 10
+- inputText: '31/02/2026'
+- hideKeyboard
+- tapOn:
+    id: movement-save-button
+- assertVisible: 'Confira as datas no formato DD/MM/AAAA.'
+- assertNotVisible:
+    id: movement-row-test-1

@@ -1,6 +1,6 @@
 # Cofre — Gestão financeira pessoal local (v2.0)
 
-> **Documentação:** 23/10/2026. **Estado:** especificado, implementação não iniciada. Protótipo demonstrativo sem dados persistidos ou segurança ativa.
+> **Documentação:** 23/10/2026. **Estado:** app Android de teste em início, usando somente dados fictícios em memória. Não usar dados financeiros reais; persistência segura e POC nativa ainda não foram validadas.
 
 **Objetivo:** saber quanto pode realmente gastar, isolando reservas e investimentos, mantendo previsão de custos/receitas, saldos diários e mensais, patrimônio e custos/rendimentos por projeto. Aplicativo mobile **offline-first**, **sem backend/API**, monólito modular em camadas sem rigidez excessiva, SQLite com SQLCipher e backup criptografado portátil.
 
@@ -52,4 +52,6 @@ Também incluídos: [AGENTS.md](AGENTS.md), [CHANGELOG.md](CHANGELOG.md), `diagr
 
 ## Implementação
 
-Começar pela **POC nativa de segurança**: SQLCipher real, desbloqueio ligado à chave, senha, biometria, backup cifrado restaurável em outro aparelho. Depois núcleo de movimentos, lista cronológica e meses atual/próximo; seguir com parcelas/ações/recorrências, projetos e relatórios. Os arquivos formalizam decisões de projeto, não constituem aplicativo funcional nem segurança já auditada.
+A pedido do usuário, iniciou-se um **shell Android de teste** em [mobile/](mobile/): telas Início e Movimentações, cálculos em centavos e lançamentos fictícios mantidos somente na memória. Ele serve para avaliar fluxo e interface; não tem banco, autenticação ou backup e não deve receber dados reais.
+
+A **POC nativa de segurança** continua obrigatória antes de adicionar persistência ou aceitar dados reais: SQLCipher real, desbloqueio ligado à chave, senha, biometria e backup cifrado restaurável em outro aparelho. Depois do gate, seguir o roadmap de movimentos, pagamentos/recorrências, projetos e relatórios. A implementação de teste não é uma segurança auditada nem um app financeiro pronto.

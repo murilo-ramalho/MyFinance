@@ -8,6 +8,10 @@
 - Provar backup cifrado portátil, restauração em instalação limpa, suporte a migrações e falha fechada.
 - Verificar bibliotecas criptográficas que realmente funcionam em ambiente React Native nativo; registrar ADRs. **Sem POC de segurança aprovada, não colocar dados financeiros reais.**
 
+### Trilha de avaliação sem persistência
+
+É permitido desenvolver em paralelo um shell de telas e domínio mínimo com **fixtures fictícias mantidas apenas em memória**, para avaliação visual e de fluxo. Essa trilha não usa SQLite sem SQLCipher, não persiste dados e não substitui nenhum aceite da Fase 0. O app de teste deve avisar que os dados são fictícios e somem ao fechar.
+
 ## Fase 1 — Núcleo financeiro mínimo
 
 - Modelo de contas de caixa, usuário local, operações, transferências e envelopes.

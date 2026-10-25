@@ -94,3 +94,13 @@ Escrever teste de comportamento antes ou junto da regra crítica; evitar mocks q
 **Fuzzing direcionado:** geração de ações sobre séries, exceções repetidas, estornos parciais, importações com horas ausentes e troca de vencimento/pagamento. Gerador compara saldos recomputados sem cache com os derivados incrementais.
 
 A especificação inclui fixtures sintéticas verificáveis em `docs/18-cenarios-de-aceite.json`.
+
+## Cobertura do shell Android de teste
+
+O shell atual usa três níveis executáveis ou preparados:
+
+- `../mobile/tests/*.test.ts`: regressões unitárias de dinheiro, datas, ordenação, projeção mensal, fluxo por data de caixa, negativos, eventos sem hora, vendas iguais mantidas distintas, CT-048 e limites de inteiros seguros. Executar com `npm run test:unit`.
+- `../mobile/tests/ui/App.test.tsx`: interações da tela e formulário em ambiente React Native simulado; cobre meses inicial/seguinte, criação, edição sem sobrescrever campos, validação e distinção entre evento e caixa. Executar com `npm run test:ui`.
+- `../mobile/.maestro/*.yaml`: jornadas ponta a ponta contra o APK Android instalado, cobrindo navegação, criação, reabertura do formulário e entradas inválidas. Executar com `npm run test:e2e` em uma máquina com Maestro e Android configurados.
+
+Os testes Jest não substituem execução em aparelho. Os fluxos Maestro precisam ser executados em Android; SQLCipher, autenticação, backups, armazenamento, pagamentos, estornos e recorrências permanecem sem implementação e sem cobertura neste shell. Seus critérios continuam como gates próprios das fases correspondentes do roadmap.

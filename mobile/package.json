@@ -1,0 +1,31 @@
+{
+  "name": "cofre-mobile-test",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "start": "node scripts/expo.mjs start",
+    "android": "node scripts/expo.mjs start --android",
+    "bundle:android": "node scripts/expo.mjs export --platform android --output-dir dist",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run test:unit && npm run test:ui",
+    "test:unit": "node --experimental-strip-types tests/run.ts",
+    "test:ui": "jest --config jest.config.cjs --runInBand",
+    "test:e2e": "maestro test .maestro"
+  },
+  "dependencies": {
+    "expo": "~58.0.19",
+    "react": "19.3.0",
+    "react-native": "0.88.0"
+  },
+  "devDependencies": {
+    "@testing-library/react-native": "^14.1.0",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^26.6.5",
+    "@types/react": "~19.3.0",
+    "jest": "^30.5.2",
+    "jest-expo": "^58.0.12",
+    "typescript": "~6.0.3"
+  }
+}

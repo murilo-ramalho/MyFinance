@@ -37,7 +37,7 @@ As datas civis permanecem independentes do timezone de auditoria; o fuso configu
 
 ## Visão mensal padrão
 
-- Abertura herdada do mês anterior; entradas/saídas de caixa do mês; **resultado do mês**; **fechamento transmitido** ao próximo; menor saldo diário e primeira insuficiência; total em contas selecionadas e livre para gastar **separadamente**.
+- Abertura herdada do mês anterior; entradas/saídas de caixa do mês; **resultado do mês**; **fechamento transmitido** ao próximo; menor saldo diário e primeira insuficiência; total em contas selecionadas e livre para gastar **separadamente**. Para movimentos sem hora, agregar cada data civil antes de calcular o mínimo; não inferir uma sequência dentro do dia por ID ou ordem de lista.
 - O cartão do mês atual combina pagamentos já liquidados e previsões futuras remanescentes, **com separação visual**. O próximo mês é projetado.
 - Não truncar valores negativos; mudanças retroativas propagam ao período e às projeções seguintes. Preservar baseline para mostrar «planejado quando foi criado» × «revisado hoje» × «realizado».
 
