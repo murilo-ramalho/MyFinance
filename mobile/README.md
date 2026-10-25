@@ -1,4 +1,4 @@
-# Cofre Mobile — build de teste
+# myFinance Mobile — build de teste
 
 Este projeto Expo Android serve para avaliar o fluxo de Início e Movimentações com dados totalmente fictícios.
 

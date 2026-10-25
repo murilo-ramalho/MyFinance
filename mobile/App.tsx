@@ -235,7 +235,7 @@ export default function App() {
       <View style={styles.appShell}>
         <View style={styles.topBar}>
           <View>
-            <Text style={styles.brand}>COFRE</Text>
+            <Text style={styles.brand}>myFinance</Text>
             <Text style={styles.brandSub}>FINANÇAS DO SEU JEITO</Text>
           </View>
           <Pressable

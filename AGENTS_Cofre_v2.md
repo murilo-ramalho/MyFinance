@@ -1,7 +1,7 @@
 # AGENTS.md — Diretrizes para agentes de programação
 
 ## Objetivo
-Desenvolver o **Cofre v2**, aplicativo financeiro mobile **offline-first e sem backend**, com monólito modular e dados locais cifrados. Critérios: **integridade financeira, facilidade de registro, previsibilidade, segurança e manutenção simples**. Este arquivo não substitui testes nem revisão humana.
+Desenvolver o **myFinance v2**, aplicativo financeiro mobile **offline-first e sem backend**, com monólito modular e dados locais cifrados. Critérios: **integridade financeira, facilidade de registro, previsibilidade, segurança e manutenção simples**. Este arquivo não substitui testes nem revisão humana.
 
 ## Contexto mínimo por tarefa
 1. Ler `README.md` e **somente** os docs relevantes. Se envolve saldos, edição, pagamentos ou previsões, ler `docs/02-regras-de-negocio.md`, `docs/13-movimentacoes-e-lista.md` e docs 14–15 conforme a operação. Se envolve segurança/importação, ler docs 06, 07 e 17.

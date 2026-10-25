@@ -1,4 +1,4 @@
-# Cofre — Especificação consolidada v2.0
+# myFinance — Especificação consolidada v2.0
 
 **Data:** 23/10/2026. **Status:** documentação de produto e arquitetura, não software implementado.
 
@@ -9,7 +9,7 @@ Este arquivo reúne os documentos do pacote para leitura. Os arquivos modulares 
 
 ## README do projeto
 
-# Cofre — Gestão financeira pessoal local (v2.0)
+# myFinance — Gestão financeira pessoal local (v2.0)
 
 > **Documentação:** 23/10/2026. **Estado:** especificado, implementação não iniciada. Protótipo demonstrativo sem dados persistidos ou segurança ativa.
 
@@ -1452,7 +1452,7 @@ Verificar Android físico e, antes de prometer suporte, iOS físico: abrir SQLCi
 
 ```plantuml
 @startuml
-title Casos de uso — Cofre Financeiro Local
+title Casos de uso — myFinance
 left to right direction
 skinparam packageStyle rectangle
 actor "Usuário local" as U
@@ -1857,7 +1857,7 @@ UC -> REP : atualizar fluxo de caixa, não duplicar consumo
 left to right direction
 skinparam shadowing false
 actor "Usuário local" as U
-rectangle "Cofre — Casos de uso v2" {
+rectangle "myFinance — Casos de uso v2" {
   usecase "Consultar mês atual\ne próximo" as UC1
   usecase "Filtrar movimentações\npor mês/data/hora" as UC2
   usecase "Registrar ou editar\ncompra, receita, previsão" as UC3
@@ -2144,7 +2144,7 @@ Inicio --> [*] : bloquear
 # AGENTS.md — Diretrizes para agentes de programação
 
 ## Objetivo
-Desenvolver o **Cofre v2**, aplicativo financeiro mobile **offline-first e sem backend**, com monólito modular e dados locais cifrados. Critérios: **integridade financeira, facilidade de registro, previsibilidade, segurança e manutenção simples**. Este arquivo não substitui testes nem revisão humana.
+Desenvolver o **myFinance v2**, aplicativo financeiro mobile **offline-first e sem backend**, com monólito modular e dados locais cifrados. Critérios: **integridade financeira, facilidade de registro, previsibilidade, segurança e manutenção simples**. Este arquivo não substitui testes nem revisão humana.
 
 ## Contexto mínimo por tarefa
 1. Ler `README.md` e **somente** os docs relevantes. Se envolve saldos, edição, pagamentos ou previsões, ler `docs/02-regras-de-negocio.md`, `docs/13-movimentacoes-e-lista.md` e docs 14–15 conforme a operação. Se envolve segurança/importação, ler docs 06, 07 e 17.

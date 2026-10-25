@@ -2,7 +2,7 @@
 left to right direction
 skinparam shadowing false
 actor "Usuário local" as U
-rectangle "Cofre — Casos de uso v2" {
+rectangle "myFinance — Casos de uso v2" {
   usecase "Consultar mês atual\ne próximo" as UC1
   usecase "Filtrar movimentações\npor mês/data/hora" as UC2
   usecase "Registrar ou editar\ncompra, receita, previsão" as UC3

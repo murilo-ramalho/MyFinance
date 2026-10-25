@@ -1,4 +1,4 @@
-appId: com.cofre.mobiletest
+appId: com.myfinance.mobiletest
 name: Home and default month navigation
 tags:
   - smoke

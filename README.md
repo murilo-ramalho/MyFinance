@@ -1,4 +1,4 @@
-# Cofre — Gestão financeira pessoal local (v2.0)
+# myFinance — Gestão financeira pessoal local (v2.0)
 
 > **Documentação:** 23/10/2026. **Estado:** app Android de teste em início, usando somente dados fictícios em memória. Não usar dados financeiros reais; persistência segura e POC nativa ainda não foram validadas.
 

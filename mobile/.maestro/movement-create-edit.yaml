@@ -1,4 +1,4 @@
-appId: com.cofre.mobiletest
+appId: com.myfinance.mobiletest
 name: Create and reopen a demo movement
 tags:
   - smoke

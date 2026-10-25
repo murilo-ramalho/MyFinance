@@ -1,5 +1,5 @@
 @startuml
-title Casos de uso — Cofre Financeiro Local
+title Casos de uso — myFinance
 left to right direction
 skinparam packageStyle rectangle
 actor "Usuário local" as U

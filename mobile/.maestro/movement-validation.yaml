@@ -1,4 +1,4 @@
-appId: com.cofre.mobiletest
+appId: com.myfinance.mobiletest
 name: Reject invalid demo movement input
 tags:
   - regression

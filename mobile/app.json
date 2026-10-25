@@ -1,13 +1,13 @@
 {
   "expo": {
-    "name": "Cofre (teste)",
-    "slug": "cofre-mobile-test",
+    "name": "myFinance",
+    "slug": "myfinance-mobile-test",
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "android": {
-      "package": "com.cofre.mobiletest"
+      "package": "com.myfinance.mobiletest"
     }
   }
 }

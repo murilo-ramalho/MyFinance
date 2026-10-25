@@ -31,6 +31,7 @@ describe('app movement journeys', () => {
   }
 
   test('shows the demo warning and current plus following month on home', () => {
+    expect(screen.getByText('myFinance')).toBeTruthy();
     expect(screen.getByText('TESTE · dados fictícios, só na memória')).toBeTruthy();
     expect(screen.getByText('Mês atual · inclui previsões')).toBeTruthy();
     expect(screen.getByText('Próximo mês · projeção')).toBeTruthy();
