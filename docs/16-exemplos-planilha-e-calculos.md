@@ -1,16 +1,32 @@
 # 16 — Planilha de referência, dados de exemplo e validação de cálculos
 
-> **Atenção:** dados de outubro e agosto fornecidos pelo usuário ilustram cenários; **não** são necessariamente cadastro completo, nem devem ser inseridos no protótipo como dados pessoais reais. Algumas fórmulas originais da planilha não foram disponibilizadas; não presumir suas definições.
+> **Atenção:** `docs/Controle Financeiro.xlsx` é a planilha real fornecida para orientar o produto. Foi inspecionada estruturalmente; fórmulas e macros não foram executadas e seus lançamentos não foram copiados para o app nem para fixtures. A aba `Diferença` precisa de confirmação semântica antes de virar uma regra de cálculo.
 
 ## Mapear visão, não replicar abas
 
-| Aba original | Conceito do aplicativo | Evitar |
+| Aba e campos observados | Conceito formalizado para o app | Confirmação / evitar |
 |---|---|---|
-| RESUMO | fechamento mensal + previsão do mês seguinte | usar saldo de conta como sinônimo de disponível seguro |
-| REGISTROS | lista de fatos/obrigações/liquidações | misturar datas de compra e pagamento |
-| CARTÃO | compras, parcelas, faturas, pagamento e adiantamento | contar fatura como nova despesa econômica |
-| GASTOS MENORES | categorias/filtros de movimentos | duplicar movimento que já esteja na lista geral |
-| RENDIMENTOS IMPRESSORA | projeto produtivo e apuração de margem | tratar consumo de estoque como novo pagamento |
+| `RESUMO`; resumo mensal e tabela `Produto`, `Comprado`, `Preço` | início mensal; cadastro futuro de item/estoque | recalcular a partir dos registros; confirmar unidade/quantidade e não importar totais ou componentes fixos como verdade |
+| `DADOS`: `DATA`, `TIPO`, `VALOR`, `DESCRIÇÃO`, `Diferença` | lista canônica de movimentos, com data do evento e valor em centavos | mapear vocabulário de `TIPO`; não tratar `Diferença` como cálculo único enquanto suas fórmulas não tiverem semântica estável |
+| `CARTÃO`: `DATA`, `DATA C.`, `TIPO`, `VALOR`, `DESCRIÇÃO` | visão filtrada por cartão e obrigação, com data da compra separada da data de caixa/fatura | confirmar o significado exato de `DATA C.`; não derivar parcelas ou contabilizar compra e pagamento como duas despesas |
+| `SAIDEIRA E IMPREVISTOS`: `DATA`, `TIPO`, `VALOR`, `DESCRIÇÃO`, `RENDIMENTO` | filtros/categorias e visão de entradas extraordinárias sobre os mesmos movimentos | confirmar se cada linha é independente ou uma cópia/resumo de `DADOS`; não somar duas abas cegamente |
+| `IMPRESSORA3D`: `DATA`, `C. PRODUÇÃO`, `P. VENDA`, `DESCRIÇÃO` | projeto produtivo com custo e venda, separado de pagamento e recebimento | confirmar se custo é desembolso, custo de estoque consumido ou rateio; não criar saída de caixa pelo consumo de item já pago |
+
+### Requisitos derivados para o protótipo
+
+- Uma lista de movimentos é a fonte das visões; cartões e projetos são etiquetas/filtros e não cópias financeiras.
+- Cada fluxo de caixa indica dinheiro digital ou físico. Investimentos são patrimônio separado e não entram no caixa disponível nem no gasto seguro.
+- A reserva é uma destinação dentro de uma conta e não é somada ao saldo da conta novamente.
+- A visão de cartão precisa exibir data da compra/evento e data de caixa prevista em campos distintos. A tela atual é demonstrativa e ainda não implementa fatura, parcelamento ou conciliação de pagamento.
+- Projeto agrupa compras/vendas; custo produtivo, consumo de estoque e margem dependem do módulo de estoque e não são calculados pelo formulário genérico atual.
+- A primeira tela de teste usa só fixtures inventadas. A planilha real permanece intacta e não é importada nem alterada.
+
+### Pontos a confirmar antes de importar registros
+
+1. O significado de `DATA C.` e o vocabulário permitido na coluna `TIPO`.
+2. Se `SAIDEIRA E IMPREVISTOS` contém fatos independentes ou uma segunda apresentação de movimentos de `DADOS`.
+3. O sentido da coluna `Diferença` e os componentes fixos das fórmulas do `RESUMO`.
+4. Unidade e precisão de `Comprado`, e se `C. PRODUÇÃO` representa compra paga, consumo de estoque ou custo alocado.
 
 ## Fórmulas de referência verificadas
 

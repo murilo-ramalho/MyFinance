@@ -7,7 +7,9 @@
   "scripts": {
     "start": "node scripts/expo.mjs start",
     "android": "node scripts/expo.mjs start --android",
+    "web": "node scripts/expo.mjs start --web",
     "bundle:android": "node scripts/expo.mjs export --platform android --output-dir dist",
+    "bundle:web": "node scripts/expo.mjs export --platform web --output-dir web-build",
     "typecheck": "tsc --noEmit",
     "test": "npm run test:unit && npm run test:ui",
     "test:unit": "node --experimental-strip-types tests/run.ts",
@@ -15,9 +17,12 @@
     "test:e2e": "maestro test .maestro"
   },
   "dependencies": {
+    "@expo/metro-runtime": "~58.0.15",
     "expo": "~58.0.19",
     "react": "19.3.0",
-    "react-native": "0.88.0"
+    "react-dom": "19.3.0",
+    "react-native": "0.88.0",
+    "react-native-web": "^0.21.4"
   },
   "devDependencies": {
     "@testing-library/react-native": "^14.1.0",

@@ -20,7 +20,7 @@ Barra inferior com quatro destinos: **Início**, **Planejamento**, **Movimentaç
 | T-05 | Contas e reservas | Onde está o dinheiro? | contas reais, envelopes virtuais, liquidez, movimentações | transferir, alocar, liberar |
 | T-06 | Orçamento | Planejado x realizado | categorias, desvio e comparação histórica | revisar previsão |
 | T-07 | Cartões/parcelas | Faturas e obrigações | limites, parcelas, vencimentos, pagamentos | registrar parcial, antecipar |
-| T-08 | Projetos e itens | Custos e retorno por setor | produto, quantidade, preço/kg, consumo, perdas, custo por uso | compra/consumo |
+| T-08 | Projetos e itens | Classificar entradas/saídas por projeto e acompanhar fluxo e custos/retorno | projeto com nome e descrição, entradas, saídas e líquido acumulado por estado; produto, quantidade, preço/kg, consumo, perdas e custo por uso (futuro) | criar projeto, associar movimento, compra/consumo |
 | T-09 | Investimentos/patrimônio | Evolução e fontes de retorno | aportes, preço médio, dividendos, valor de mercado, dívidas | lançamento de evento |
 | T-10 | Relatórios | Mini análises | comparativo mensal, saldo mínimo, evolução do patrimônio, top desvios | filtro e detalhe |
 | T-11 | Agenda/pendências | Revisar lançamentos não confirmados | recorrências, atrasos e estimativas vencidas | confirmar, editar, adiar |
@@ -156,7 +156,7 @@ Valores negativos usam sinal `−`, texto explicativo e marcador, sem depender a
 
 **Prioridade de leitura:** a tela inicial apresenta por padrão **atual + próximo mês**, além do dinheiro livre; Movimentações inicia no **mês atual**, com eventos em lista cronológica por dia/hora conhecida, incluindo previstos, realizados e compromissos. Os detalhes abrem «Editar», «Registrar pagamento», «Adiar», «Estornar/reembolsar», «Cancelar», «Duplicar», «Ver histórico» conforme estado; não expor ação ilegal/inaplicável.
 
-**Formulário:** único para criar e editar; data de compra e pagamento = hoje **somente na criação e no caso pago agora**; quantidade padrão 1; valor, quantidade e unidade podem calcular subtotal; campo «Repetir» expande periodicidade, término e condicional; campo «Mais» disponibiliza projeto, conta, cartão, produto, rentabilidade e personalização. Não ocultar diferença entre «previsto» e «realizado».
+**Formulário:** único para criar e editar; data de compra e pagamento = hoje **somente na criação e no caso pago agora**; quantidade padrão 1; valor, quantidade e unidade podem calcular subtotal; campo «Repetir» expande periodicidade, término e condicional; campo «Mais» disponibiliza projeto, conta, cartão, produto, rentabilidade e personalização. Para despesa, meio digital sem cartão é débito; cartão selecionado é crédito; dinheiro físico permanece separado. Não ocultar diferença entre «previsto» e «realizado».
 
 **Ação sobre série:** tela curta para escolher alcance «esta», «esta e próximas», «todas pendentes», «regra inteira»; prévia mostra o que será cancelado, o que permanece e se envolve obrigações reais. Ao cancelar financiamento, esclarecer que o app não age sobre credor.
 

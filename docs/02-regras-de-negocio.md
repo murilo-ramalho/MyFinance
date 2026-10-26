@@ -31,6 +31,7 @@
 - **RN-023:** Pagamento antecipado, parcial, atraso, juros, estorno e renegociação são eventos explícitos, não sobrescrita de históricos.
 - **RN-024:** Lançamento de compra com itens pode ter quantidade, unidade, valor unitário, descontos e taxa. Soma de itens + ajustes = total da compra; diferença de arredondamento deve ser distribuída e testada.
 - **RN-025:** Distinguir o “custo da compra” do “fluxo de caixa” por data para evitar dupla subtração do saldo.
+- **RN-026:** Despesa digital sem cartão é débito e afeta caixa na data de liquidação efetiva/prevista. Cartão selecionado é crédito: a compra cria obrigação, sem baixar a conta bancária na data da compra. Dinheiro físico é meio separado.
 
 ## 2.4 Previsões, recorrências e revisões
 
@@ -66,7 +67,7 @@ Saldo elegível inicial = R$ 3.500; saídas previstas/contratadas até próximo 
 
 - **RN-060:** Orçamento mensal (ex.: alimentação R$ 600) não é saída de caixa. Gasto efetivo de R$ 636 ⇒ `desvio = +R$36` e `desvio_% = 6%`.
 - **RN-061:** Previsão original, revisão de orçamento e realizado devem estar identificados separadamente para medir qualidade da previsão e seu impacto no fluxo futuro.
-- **RN-062:** Projeto/setor agrupa despesas e receitas; se um registro for distribuído entre projetos, soma dos percentuais/centavos alocados deve corresponder exatamente ao total.
+- **RN-062:** Projeto/setor agrupa despesas e receitas; se um registro for distribuído entre projetos, soma dos percentuais/centavos alocados deve corresponder exatamente ao total. No shell de teste, projetos têm nome e descrição, podem ser associados a entradas ou saídas sem criar outro fluxo de caixa e exibem fluxo acumulado com realizado, compromisso e previsão separados. Esse fluxo não é margem nem custo produtivo.
 - **RN-063:** Item de estoque usa unidade de medida explícita (`kg`, `g`, `un`, `L`, `mL`, etc.), fator de conversão conhecido e precisão decimal; preço/kg = custo alocado dividido por kg comprado. Descontos/taxas precisam de método de alocação.
 - **RN-064:** Compra de 3 kg a R$ 105 ⇒ R$ 35/kg. Consumo de 200g ⇒ R$ 7 a custo da compra, antes de outros custos e perdas.
 - **RN-065:** Perda de estoque é movimento de estoque e possível perda econômica; **não** lançar nova saída de caixa se o item já foi pago.

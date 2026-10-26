@@ -95,12 +95,25 @@ Escrever teste de comportamento antes ou junto da regra crítica; evitar mocks q
 
 A especificação inclui fixtures sintéticas verificáveis em `docs/18-cenarios-de-aceite.json`.
 
-## Cobertura do shell Android de teste
+## Cobertura do shell de teste
 
 O shell atual usa três níveis executáveis ou preparados:
 
-- `../mobile/tests/*.test.ts`: regressões unitárias de dinheiro, datas, ordenação, projeção mensal, fluxo por data de caixa, negativos, eventos sem hora, vendas iguais mantidas distintas, CT-048 e limites de inteiros seguros. Executar com `npm run test:unit`.
-- `../mobile/tests/ui/App.test.tsx`: interações da tela e formulário em ambiente React Native simulado; cobre meses inicial/seguinte, criação, edição sem sobrescrever campos, validação e distinção entre evento e caixa. Executar com `npm run test:ui`.
-- `../mobile/.maestro/*.yaml`: jornadas ponta a ponta contra o APK Android instalado, cobrindo navegação, criação, reabertura do formulário e entradas inválidas. Executar com `npm run test:e2e` em uma máquina com Maestro e Android configurados.
+- `../mobile/tests/*.test.ts`: regressões unitárias de dinheiro, datas, ordenação, projeção mensal, fluxo por data de caixa, negativos, eventos sem hora, vendas iguais mantidas distintas, cálculo de gasto seguro (cenários conservador/esperado, atrasos e margem), CT-048 e limites de inteiros seguros. Executar com `npm run test:unit`.
+- `../mobile/tests/ui/App.test.tsx`: interações da tela e formulário em ambiente React Native simulado; cobre meses inicial/seguinte, separação de totais realizados/compromissados/previstos, estimativa demonstrativa de gasto seguro e troca de cenário, busca, filtros de situação/tipo, ordem cronológica, navegação para períodos passados/futuros, aviso quando não há abertura histórica, criação, edição sem sobrescrever campos, validação e distinção entre evento e caixa. Executar com `npm run test:ui`.
+- `../mobile/.maestro/*.yaml`: jornadas ponta a ponta contra o APK Android instalado, cobrindo navegação, criação, reabertura do formulário, entradas inválidas e as visões de cartão/projeto/tipos de dinheiro. Executar com `npm run test:e2e` em uma máquina com Maestro e Android configurados.
 
-Os testes Jest não substituem execução em aparelho. Os fluxos Maestro precisam ser executados em Android; SQLCipher, autenticação, backups, armazenamento, pagamentos, estornos e recorrências permanecem sem implementação e sem cobertura neste shell. Seus critérios continuam como gates próprios das fases correspondentes do roadmap.
+Os testes Jest não substituem execução em aparelho. Os fluxos Maestro precisam ser executados em Android; SQLCipher, autenticação, backups, armazenamento, gestão de contas/reservas, orçamento, pagamentos, estornos, recorrências, cálculo de custo/margem de projetos e estoque permanecem sem implementação e sem cobertura neste shell. O indicador de gasto seguro é apenas demonstrativo, ligado a fixtures fixas; a navegação por mês passado só consulta lançamentos, pois a amostra não possui abertura histórica para simular recálculo retroativo. Esses critérios continuam como gates próprios das fases correspondentes do roadmap.
+
+### Regressões das visões da planilha no shell
+
+| ID | Cenário | Resultado exigido |
+|---|---|---|
+| CT-051 | Etiquetar um movimento com projeto ou cartão | A etiqueta organiza a visão e não cria um segundo fluxo de caixa |
+| CT-052 | Compra de cartão com data de evento diferente da data prevista de caixa | Lista/cartão mostram ambas as datas; resumo de caixa aplica a saída somente na data prevista |
+| CT-053 | Saldo com dinheiro digital e físico, mais patrimônio de investimento | Caixa por meio soma ao saldo total; investimento fica fora do caixa e do gasto seguro; reserva não se soma de novo |
+| CT-054 | Criar projeto com nome e descrição e classificar entrada e saída nele | Projeto aparece na visão e cada lançamento conserva seu efeito único no caixa |
+| CT-055 | Resumir entradas e saídas de um projeto | Líquidos realizado, compromissado, previsto e projetado ficam separados; valor negativo e limite de centavos seguros são preservados |
+| CT-056 | Classificar despesas por débito, crédito ou dinheiro físico | Débito digital afeta caixa; compra no crédito fica como obrigação; dinheiro físico não é rotulado como cartão |
+
+As regressões atuais cobrem CT-051 a CT-056 com fixtures exclusivamente fictícias: tipo de dinheiro no domínio, navegação pelas visões, datas distintas da compra prevista em cartão, criação/classificação de projetos, cálculo do fluxo acumulado com valores negativos/limites seguros e validação débito/crédito.

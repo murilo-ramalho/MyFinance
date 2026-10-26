@@ -1,0 +1,28 @@
+appId: com.myfinance.mobiletest
+name: Inspect card, project, and money type views
+tags:
+  - regression
+  - android
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: tab-views
+- assertVisible:
+    id: movement-row-demo-card-purchase
+- assertVisible: 'Caixa previsto: 10/11/2026'
+- tapOn:
+    id: view-projects
+- assertVisible:
+    id: movement-row-demo-market
+- assertVisible:
+    id: movement-row-demo-card-purchase
+- tapOn:
+    id: view-money
+- assertVisible:
+    id: money-type-digital
+- assertVisible:
+    id: money-type-physical
+- assertVisible:
+    id: money-type-investments
+- assertVisible: 'Investimentos'

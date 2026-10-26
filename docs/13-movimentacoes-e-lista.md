@@ -2,7 +2,7 @@
 
 ## Decisão de produto
 
-O registro é **simples**; as visualizações são derivadas dos mesmos dados. A planilha fornecida é uma referência de **regras e exemplos**, não uma obrigação de reproduzir cinco abas. A lista de movimentações é uma tela de primeira classe, acessível diretamente na barra principal. A tela inicial apresenta por padrão o **mês civil atual seguido do próximo**, em sequência; navegação permite meses passados e futuros.
+O registro é **simples**; as visualizações são derivadas dos mesmos dados. A planilha real orienta campos e visões, mas não será replicada como cinco fontes de lançamentos. A lista de movimentações é uma tela de primeira classe, acessível diretamente na barra principal. Cartão, projeto e tipo de dinheiro são recortes do mesmo movimento. A tela inicial apresenta por padrão o **mês civil atual seguido do próximo**, em sequência; navegação permite meses passados e futuros.
 
 ## Tela «Movimentações» — contrato de UX
 
@@ -44,3 +44,9 @@ As datas civis permanecem independentes do timezone de auditoria; o fuso configu
 ## Cenário de aceite
 
 Em 23/10/2026, ao abrir Movimentações pela primeira vez, o filtro é **outubro/2026**, todas as situações. Uma compra importada de 08/08/2026 sem hora aparece em agosto sem hora inventada. Uma despesa de novembro ainda não confirmada aparece como **prevista**, e não como gasto bancário já pago. Uma parcela vencida em 10/11 mas paga em 28/10 afeta caixa em outubro e mantém o vencimento original em seus detalhes.
+
+## Cobertura atual no shell de teste
+
+A interface em memória permite navegar mês a mês, buscar por descrição, filtrar por situação e por entrada/saída, alternar a ordem cronológica e restaurar os filtros padrão. Os resumos separam valores realizados, compromissos e previsões; a projeção mensal é exibida do mês atual para os meses seguintes. Meses anteriores exibem a lista, mas não um saldo: a fixture não possui abertura histórica suficiente para calcular esse valor com segurança.
+
+O shell permite criar projetos com nome e descrição na aba **Visões > Projetos** e associá-los a entradas ou saídas pelo formulário de movimentação. Cada projeto mostra entradas, saídas e fluxo líquido acumulados, separando realizados, compromissos e previsões; o líquido projetado soma os três estados. Esses valores descrevem o caixa dos movimentos associados, não lucro ou margem produtiva. Em despesas, meio digital sem cartão é identificado como débito; um cartão selecionado é crédito; dinheiro físico fica separado. Os projetos e movimentos continuam apenas na memória. A associação organiza os mesmos lançamentos, sem criar outro fluxo de caixa. A aba **Visões** também filtra movimentos por cartão/projeto e separa os saldos fictícios digitais, físicos e o patrimônio de investimento. A reserva continua incluída no caixa que a contém e aparece como destinação. A compra de crédito da POC fica como obrigação com data de caixa prevista distinta; ainda não há fatura, parcelamento, passivo ou pagamento de cartão implementados. Investimento é um cartão ilustrativo estático, sem aporte/resgate. Custo produtivo, estoque e margem continuam pendentes.
