@@ -17,8 +17,8 @@
 - Uma lista de movimentos é a fonte das visões; cartões e projetos são etiquetas/filtros e não cópias financeiras.
 - Cada fluxo de caixa indica dinheiro digital ou físico. Investimentos são patrimônio separado e não entram no caixa disponível nem no gasto seguro.
 - A reserva é uma destinação dentro de uma conta e não é somada ao saldo da conta novamente.
-- A visão de cartão precisa exibir data da compra/evento e data de caixa prevista em campos distintos. A tela atual é demonstrativa e ainda não implementa fatura, parcelamento ou conciliação de pagamento.
-- Projeto agrupa compras/vendas; custo produtivo, consumo de estoque e margem dependem do módulo de estoque e não são calculados pelo formulário genérico atual.
+- A visão de cartão exibe data da compra/evento e data de caixa em campos distintos. Faturas, parcelas e pagamentos manuais estão disponíveis em Organizar, sem integração ou conciliação bancária automática.
+- Projeto agrupa compras/vendas; o usuário informa diretamente o custo tido na produção. Consumo controla quantidade de estoque e não determina automaticamente o custo. Fluxo de caixa e resultado produtivo são indicadores separados.
 - A primeira tela de teste usa só fixtures inventadas. A planilha real permanece intacta e não é importada nem alterada.
 
 ### Pontos a confirmar antes de importar registros
@@ -26,7 +26,7 @@
 1. O significado de `DATA C.` e o vocabulário permitido na coluna `TIPO`.
 2. Se `SAIDEIRA E IMPREVISTOS` contém fatos independentes ou uma segunda apresentação de movimentos de `DADOS`.
 3. O sentido da coluna `Diferença` e os componentes fixos das fórmulas do `RESUMO`.
-4. Unidade e precisão de `Comprado`, e se `C. PRODUÇÃO` representa compra paga, consumo de estoque ou custo alocado.
+4. Unidade e precisão de `Comprado`. O custo de produção será informado pelo usuário; não inferir pagamento bancário a partir dele.
 
 ## Fórmulas de referência verificadas
 
@@ -36,7 +36,7 @@
 - **Impressora / ZOKI:** venda R$120,00 − produção R$84,87 = **lucro bruto R$35,13**.
 - **Impressora / 40 espátulas:** venda R$140,00 − produção R$90,32 = **lucro bruto R$49,68**.
 - **Impressora (amostra):** faturamento R$260,00; custos produtivos R$175,19; lucro bruto R$84,81; margem bruta ≈ **32,62%** (não inclui outros custos não informados).
-- **Produto:** 3 kg por R$105,00 ⇒ custo unitário R$35/kg; consumo 200 g = R$7 de custo consumido (sem novo movimento de caixa).
+- **Produto (referência de cálculo externo):** 3 kg por R$105,00 ⇒ R$35/kg; 200 g equivalem a R$7. O app não calcula esse custo: o usuário informa o valor tido, sem novo movimento de caixa.
 - **Ação:** R$105 por cota com provento estimado R$1/cota **por evento explicitado**; renda prevista depende de quantidade, calendário, taxas e hipótese, não é dinheiro realizado nem garantido.
 
 ## Regras de interpretação
@@ -46,7 +46,7 @@
 3. `correção` no histórico é um **ajuste a investigar**: pode ser conciliação, não receita regular.
 4. `1/10`, `2/11`, `3/4` em descrição **não** bastam para construir contrato ou número total de parcelas confiável: perguntar/confirmar antes de migrar.
 5. `RECEITA ANUAL = 28.920` na amostra só será reproduzida como cálculo definido quando sua fórmula real for conhecida; não supor multiplicação por 12, porque há rendas esporádicas.
-6. Filamento pago num período e consumido no projeto em outro gera **custo de produção**, não outra saída bancária.
+6. Filamento pago num período e consumido no projeto em outro altera a quantidade de estoque. O custo de produção é informado à parte e não gera outra saída bancária.
 7. Rendas extraordinárias (auxílio, venda, trabalho avulso, reembolso, ajuste) têm classificações distintas; **reembolso** não eleva a renda econômica bruta por padrão.
 
 ## Casos exemplares para testes de regressão

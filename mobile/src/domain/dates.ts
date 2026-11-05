@@ -26,10 +26,10 @@ export function parseBrazilianDate(input: string): CivilDate | null {
 
   if (day > daysInMonth(year, month)) return null;
 
-  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}` as CivilDate;
+  return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}` as CivilDate;
 }
 
 export function formatBrazilianDate(date: CivilDate): string {
   const [year, month, day] = date.split('-').map(Number);
-  return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
+  return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${String(year).padStart(4, '0')}`;
 }

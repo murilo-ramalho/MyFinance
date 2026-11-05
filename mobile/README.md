@@ -1,56 +1,64 @@
-# myFinance Mobile — build de teste
+﻿# myFinance Mobile — implementação para validação
 
-Este projeto Expo serve para avaliar as telas Início, Movimentações e Visões no navegador e no Android, sempre com dados totalmente fictícios.
+Aplicativo de registros financeiros manuais, offline e sem backend ou integração bancária. Início mostra o mês atual e o próximo; Movimentações abre no mês atual. A aba Organizar reúne as operações e cadastros descritos em [docs/20](../docs/20-implementacao-registros-locais.md).
 
-## Limites desta versão
+## Modos de execução
 
-- Não há banco, autenticação, sincronização ou backup.
-- Os registros adicionados ficam somente na memória do processo e somem ao fechar/recarregar o app.
-- Os valores exibidos são fixtures de demonstração; não inserir dados reais.
-- Os resumos separam valores realizados, compromissos e previsões para mostrar o que já afeta o caixa e o que continua projetado.
-- O cálculo usa centavos inteiros, moeda BRL explícita e mantém a data do fato separada da data de caixa.
-- O saldo de fechamento inclui valores pagos e valores previstos/compromissados, identificados na interface.
-- Há criação e edição de lançamentos em memória. Movimentações permitem navegar por meses, filtrar situação/tipo, buscar descrição e alternar a ordem cronológica.
-- A aba Visões agrupa os mesmos lançamentos por cartão/projeto e exibe caixa digital/físico separado. É possível criar projetos com nome e descrição, classificar entradas/saídas existentes ou novas e consultar o fluxo acumulado por projeto com realizado, compromisso e previsão separados; essa etiqueta não cria outro fluxo de caixa. O resumo mostra fluxo de caixa, não custo produtivo ou margem. A compra de cartão de demonstração mostra evento e data de caixa prevista distintos.
-- Em despesas, meio digital sem cartão é identificado como débito; cartão selecionado é crédito; dinheiro físico permanece separado.
-- Investimento e reserva aparecem separados para explicar a classificação: investimento é patrimônio ilustrativo fora do caixa, e a reserva já está incluída no dinheiro digital.
-- Início mostra uma estimativa demonstrativa de gasto seguro, com cenários conservador/esperado, reserva e margem fictícias; ela não usa contas reais cadastradas.
-- O resumo de saldo começa no mês atual e projeta meses seguintes; a amostra não tem abertura histórica, então meses anteriores mostram a lista sem inventar saldo ou propagação retroativa.
-- Contas editáveis, gestão de reservas, transferências, orçamento, faturas/parcelas/pagamentos de cartão, recorrências, estornos, custos/margens de projetos, estoque, movimentações de investimento, persistência, autenticação e backup ainda não foram implementados.
-- A interface e o domínio estão em TypeScript estrito; os testes de domínio e interface também são TypeScript.
+- **Demonstração:** dados fictícios em memória, isolados do perfil protegido; disponíveis no navegador e por escolha explícita no Android. Fechar/recarregar descarta mudanças.
+- **Registros locais protegidos:** build nativo próprio com SQLCipher, senha, biometria opcional e backup cifrado. Não funciona no Expo Go nem usa SQLite sem cifra como alternativa. O aplicativo bloqueia a sessão ao sair do primeiro plano.
 
-## Executar
+O modo nativo é uma implementação para validação. **Não inserir dados reais até concluir a POC em aparelho e a revisão humana obrigatória.** Os testes Node/Jest e a exportação Metro não certificam o armazenamento nativo.
 
-Requer Node.js 22.13 ou mais recente (compatibilidade do Expo SDK 58).
+## Executar a demonstração
+
+Requer Node.js 22.13 ou mais recente e npm compatível com o lockfile.
 
 ```powershell
 npm ci --ignore-scripts
-npm run start
-```
-
-Com o Expo Go instalado em um Android, abra o QR exibido pelo Expo. Também é possível usar um build Android próprio quando JDK e Android SDK estiverem configurados.
-
-## Prévia no navegador
-
-```powershell
 npm run web
 ```
 
-O Expo abre uma prévia web da mesma interface para avaliar layout e fluxos com dados fictícios. O navegador serve para prototipação; a validação Android final ainda exige build e testes em dispositivo/emulador.
+No Android, dependências nativas exigem development build próprio. Expo Go não executa o modo protegido. Com JDK, Android SDK e aparelho/emulador configurados:
 
-## Verificações locais
+```powershell
+node scripts/expo.mjs prebuild --platform android --no-install
+node scripts/expo.mjs run:android
+```
+
+O prebuild gera arquivos nativos ignorados pelo Git. Revisar os plugins e a configuração gerada antes de distribuir. `expo.sqlite.useSQLCipher=true` é necessário, mas a comprovação exige executar o binário.
+
+## Verificações
 
 ```powershell
 npm test
 npm run typecheck
+npm run lint
 npm run bundle:android
 npm run bundle:web
 ```
 
-`npm test` executa testes de regressão de domínio com o `node:test` e testes de interação da interface com Jest/React Native Testing Library. Os fluxos ponta a ponta Android ficam em `.maestro/` e podem ser executados com `npm run test:e2e` em uma máquina com Maestro, Android SDK e emulador/aparelho configurados, com o app de teste instalado. O fluxo `card-project-money-views.yaml` cobre as três novas visões; este ambiente não tem essas ferramentas Android, então os fluxos Maestro ainda não foram executados aqui.
+São 97 testes Node de domínio/aplicação/persistência/backup/CSV e 36 testes de interface. A suíte usa SQLite real apenas com dados sintéticos para testar schema, FKs e transações; a criptografia de testes usa o provedor Node, e a interface simula os serviços nativos. Nenhum desses testes substitui a prova do provedor nativo.
 
-Os testes atuais cobrem dinheiro e datas, datas do fato versus caixa, saldos negativos e mínimos diários sem ordem intradiária inventada, estimativa de gasto seguro em centavos, separação de totais mensais por estado e tipo de dinheiro, etiquetas de cartão/projeto sem fluxo duplicado, criação de projetos e classificação de entradas/saídas, resumo acumulado por projeto com estados separados, movimentos iguais no mesmo dia, projeção de meses futuros, navegação/filtros/busca/ordenação, criação/edição no formulário e validações. Eles não cobrem armazenamento, autenticação, backup ou qualquer operação financeira ainda não implementada. Antes de persistir dados, concluir a POC de segurança descrita em [docs/09-roadmap.md](../docs/09-roadmap.md).
+Os fluxos `.maestro/` incluem a escolha explícita de demonstração e a prova nativa com bancos sintéticos isolados. `npm run test:e2e` exige Maestro, SDK e APK instalado; **não executado neste ambiente**. Não executar fluxos com `clearState` sobre perfil com dados que se deseja conservar.
 
-## Auditoria de dependências
+Na entrada do app, **Executar validação nativa com dados fictícios** testa SQLCipher, recusa sem chave/com chave errada, reabertura, restauração com outra chave e adulteração do backup. Biometria, interrupções, seletor de apps, compartilhamento e recuperação em outro aparelho exigem verificação manual adicional.
 
-Na verificação atual, `npm audit` não reporta vulnerabilidades na árvore instalada. Reexecutar após atualizar o lockfile e antes de qualquer distribuição; esse resultado não substitui a POC de segurança nem autoriza o uso de dados reais.
+## Dados e recuperação
+
+Dinheiro é salvo em centavos BRL e quantidades usam seis casas decimais exatas na unidade cadastrada. Datas do fato, vencimento, previsão e pagamento são distintas; horas desconhecidas ficam vazias. Meses anteriores à base não recebem abertura inventada.
+
+O custo tido na produção é informado pelo usuário. Estoque controla quantidades; não calcula média/FIFO e não gera pagamento ao consumir material. Recorrências nos dias 29–31 usam o último dia se necessário e retomam o dia solicitado nos meses seguintes.
+
+Backup cifrado contém livro, vínculos e histórico e exige senha de recuperação independente do dispositivo. CSV é relatório legível sem cifra: tem prévia, validação e identificação por ID, mas não transporta toda a estrutura nem restaura parcelas/transferências. Há um [modelo sintético](examples/movimentos-modelo.csv).
+
+## Dependências e limites
+
+### Arquivos de ambiente
+
+O modelo versionado é `.env.example`. Os arquivos locais `.env.development` e `.env.production` ficam na pasta `mobile` e são ignorados pelo Git, assim como `.env` e variantes locais. No checkout novo, copie o modelo para o ambiente necessário. A única configuração atual é `EXPO_NO_TELEMETRY=1`; não há API/backend que exija credenciais.
+
+Chaves SQLCipher são geradas aleatoriamente por perfil no aparelho e protegidas por senha/biometria; senhas de recuperação são fornecidas pelo usuário. Elas não pertencem aos arquivos de ambiente. Valores `EXPO_PUBLIC_*` são incorporados ao aplicativo e não servem para guardar segredos. A configuração de produção não substitui os gates de segurança e validação nativa.
+
+Após `npm audit fix --ignore-scripts`, a árvore tem **33 avisos: 1 baixo e 32 moderados**, sem alto/crítico, principalmente cadeias de ferramentas Expo/Metro/Jest. Não foi usado `--force` nem downgrade de framework. Revisar os avisos e a compatibilidade nativa antes da distribuição; ver detalhes e pendências em [docs/20](../docs/20-implementacao-registros-locais.md).
+
+Neste ambiente o Android SDK, dispositivo/emulador e Maestro não estão disponíveis. Android Studio/JBR existem, mas não foi gerado APK nem executada a POC física. As exportações Android/web verificam JavaScript, não compilação nativa.

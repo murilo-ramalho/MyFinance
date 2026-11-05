@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { daysInMonth, formatBrazilianDate, parseBrazilianDate } from '../src/domain/dates.ts';
+import { civilDateAt } from '../src/platform/deviceDate.ts';
 
 test('parses and formats civil dates without inventing a time', () => {
   const date = parseBrazilianDate(' 23/10/2026 ');
@@ -31,4 +32,16 @@ test('validates month lengths and rejects invalid year/month arguments', () => {
   assert.equal(daysInMonth(2026, 12), 31);
   assert.throws(() => daysInMonth(0, 1), RangeError);
   assert.throws(() => daysInMonth(2026, 13), RangeError);
+});
+
+test('preserves four-digit years when parsing and editing historical civil dates', () => {
+  assert.equal(parseBrazilianDate('01/01/0001'), '0001-01-01');
+  assert.equal(formatBrazilianDate('0099-02-03'), '03/02/0099');
+});
+
+test('planning timezone controls today without changing saved civil dates', () => {
+  const clock = new Date('2026-11-01T01:30:00.000Z');
+  assert.equal(civilDateAt(clock, 'America/Sao_Paulo'), '2026-10-31');
+  assert.equal(civilDateAt(clock, 'Asia/Tokyo'), '2026-11-01');
+  assert.throws(() => civilDateAt(clock, 'invalid-zone'));
 });

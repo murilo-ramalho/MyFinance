@@ -6,6 +6,11 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "plugins": [
+      ["expo-sqlite", { "useSQLCipher": true }],
+      ["expo-secure-store", { "configureAndroidBackup": true, "faceIDPermission": "Permitir desbloquear a chave dos registros locais com biometria." }],
+      "react-native-quick-crypto"
+    ],
     "web": {
       "bundler": "metro"
     },

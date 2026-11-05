@@ -1,6 +1,6 @@
 # myFinance — Gestão financeira pessoal local (v2.0)
 
-> **Documentação:** 23/10/2026. **Estado:** app Android de teste em início, usando somente dados fictícios em memória. Não usar dados financeiros reais; persistência segura e POC nativa ainda não foram validadas.
+> **Documentação:** revisada em 04/11/2026. **Estado:** implementação local para validação, com demonstração em memória e modo nativo SQLCipher, autenticação e backup cifrado. Usar dados fictícios até concluir a POC em aparelho e a revisão humana de segurança, migrações e pagamentos.
 
 **Objetivo:** saber quanto pode realmente gastar, isolando reservas e investimentos, mantendo previsão de custos/receitas, saldos diários e mensais, patrimônio e custos/rendimentos por projeto. Aplicativo mobile **offline-first**, **sem backend/API**, monólito modular em camadas sem rigidez excessiva, SQLite com SQLCipher e backup criptografado portátil.
 
@@ -12,7 +12,7 @@
 4. **Retroatividade:** corrigir registros antigos atualiza saldos passados até hoje e projeções futuras, inclusive negativos, conservando trilha de alterações.
 5. **Ações:** pagamento parcial/antecipado/atrasado, estorno/reembolso total ou parcial, reembolso a receber, adiar, dispensar obrigação e cancelar previsão. Fato original pago não desaparece.
 6. **Séries de recorrência:** calendário limitado (ex.: dia 2 até jan/2027), quantidade, indefinido, intervalo desde execução/condição, ocorrência excepcional e alterações «esta», «esta e próximas», «todas pendentes» ou «regra inteira»; preservar pagamentos anteriores.
-7. **Projetos e renda:** receita esporádica, impressão 3D, custo produtivo sem novo pagamento, estoque, preço/kg, ferramentas, investimentos, rentabilidade e relatórios curtos. A planilha é amostra de regras, não layout obrigatório.
+7. **Projetos e renda:** receita esporádica, impressão 3D, custo produtivo informado manualmente sem novo pagamento, quantidades de estoque, ferramentas, investimentos, rentabilidade e relatórios curtos. A planilha é amostra de regras, não layout obrigatório.
 8. **Segurança:** nome/senha local ou biometria ligada à chave criptográfica; SQLCipher verificado em build nativo; backup portátil cifrado; segurança de agentes auditada.
 
 ## Documentos
@@ -37,6 +37,8 @@
 | 16 | [Exemplos da planilha](docs/16-exemplos-planilha-e-calculos.md) | cálculos e interpretação |
 | 17 | [Ameaças em desenvolvimento com IA](docs/17-ameacas-agentes-e-auditoria.md) | auditoria para agentes |
 | 18 | [Fixtures JSON](docs/18-cenarios-de-aceite.json) | exemplos matemáticos testáveis |
+| 19 | [Revisão de consistência](docs/19-revisao-consistencia.md) | novas especificações, correções, cobertura e pendências |
+| 20 | [Implementação dos registros locais](docs/20-implementacao-registros-locais.md) | módulos, decisões do usuário, validação e limitações nativas |
 
 Também incluídos: [AGENTS.md](AGENTS.md), [CHANGELOG.md](CHANGELOG.md), `diagramas/*.puml`, [protótipo HTML](prototipo/index.html) e `ESPECIFICACAO_COMPLETA.md`.
 
@@ -52,6 +54,8 @@ Também incluídos: [AGENTS.md](AGENTS.md), [CHANGELOG.md](CHANGELOG.md), `diagr
 
 ## Implementação
 
-A pedido do usuário, iniciou-se um **shell de teste** em [mobile/](mobile/), com prévia web e alvo Android: telas Início, Movimentações e Visões; cálculos em centavos; totais separados entre realizados/compromissos/previsões; estimativa demonstrativa de gasto seguro; navegação por meses, busca e filtros. As visões de cartão e projeto usam etiquetas sobre os mesmos lançamentos; projetos podem ser criados com nome e descrição, associados a entradas e saídas e exibem fluxo acumulado por estado. O caixa separa dinheiro digital e físico e deixa investimentos fora do gasto seguro. Os registros e saldos são fictícios e ficam somente na memória; a planilha real foi usada para formalizar campos/visões, sem importar seus lançamentos ou executar fórmulas. O cartão ainda não tem fatura, parcelas ou pagamento, e os projetos ainda não calculam custos produtivos/estoque/margem. O app não deve receber dados reais. Meses anteriores podem ser consultados, mas não mostram saldos sem abertura histórica conhecida; recálculo retroativo ainda não foi implementado.
+O [aplicativo mobile](mobile/README.md) mantém Início, Movimentações e Visões e acrescenta **Organizar**: compras, parcelas, pagamentos parciais e correções, faturas, reembolsos vinculados, contas, transferências, reservas, aquisições, recorrências e exceções, categorias, orçamentos, estoque, custos manuais de produção, investimentos, ferramentas, caixa diário e histórico. Tudo é registro manual; não há integração bancária ou transação externa.
 
-A **POC nativa de segurança** continua obrigatória antes de adicionar persistência ou aceitar dados reais: SQLCipher real, desbloqueio ligado à chave, senha, biometria e backup cifrado restaurável em outro aparelho. Depois do gate, seguir o roadmap de movimentos, pagamentos/recorrências, projetos e relatórios. A implementação de teste não é uma segurança auditada nem um app financeiro pronto.
+O domínio usa centavos inteiros, quantidades exatas e comandos atômicos/idempotentes. O modo nativo usa repositório transacional com FKs, verificação SQLCipher antes de acessar dados, chave protegida por senha/biometria e backup autenticado portátil. O navegador oferece somente demonstração em memória. CSV é relatório sem cifra e não substitui o backup completo.
+
+Testes locais cobrem regras, persistência SQLite sintética, rollback, backup e interface. A **POC nativa de segurança** e a revisão humana continuam obrigatórias antes de dados reais: build/aparelho com SQLCipher, biometria, bloqueio, interrupções e recuperação em outro dispositivo. A matriz e as evidências estão em [20 — Implementação dos registros locais](docs/20-implementacao-registros-locais.md). Não há APK validado para distribuição nesta entrega.

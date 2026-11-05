@@ -32,3 +32,11 @@ test('refuses unsafe display values and invalid editable amounts', () => {
   assert.throws(() => brlInputFromMinor(-1), RangeError);
   assert.throws(() => brlInputFromMinor(Number.MAX_SAFE_INTEGER + 1), RangeError);
 });
+
+test('parses every cent exactly near the safe integer limit', () => {
+  for (let offset = 0; offset < 100; offset += 1) {
+    const minor = Number.MAX_SAFE_INTEGER - offset;
+    assert.equal(parseBrlToMinor(brlInputFromMinor(minor)), minor);
+  }
+  assert.equal(parseBrlToMinor('90071992547409,92'), null);
+});

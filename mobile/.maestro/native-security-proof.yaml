@@ -1,0 +1,16 @@
+appId: com.myfinance.mobiletest
+name: SQLCipher and portable backup proof with isolated synthetic data
+tags:
+  - native-security
+  - android
+---
+- launchApp:
+    clearState: true
+- tapOn: 'Executar validação nativa com dados fictícios'
+- extendedWaitUntil:
+    visible: 'Validado: Adulteração recusada antes de restaurar.'
+    timeout: 120000
+- assertVisible: 'Validado: Runtime SQLCipher confirmado antes da escrita.'
+- assertVisible: 'Validado: O arquivo cifrado recusou leitura sem chave.'
+- assertVisible: 'Validado: Chave diferente não abriu o banco.'
+- assertNotVisible: 'Falhou: A prova nativa falhou. Não use dados reais e revise este build.'

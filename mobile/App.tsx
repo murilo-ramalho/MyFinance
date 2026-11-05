@@ -14,14 +14,7 @@ import {
 } from 'react-native';
 
 import {
-  createDemoMovements,
-  DEMO_CARDS,
-  DEMO_INVESTMENT_BALANCE_MINOR,
-  DEMO_OPENING_CASH_MINOR,
-  DEMO_OPENING_BALANCE_MINOR,
-  DEMO_PROTECTED_RESERVE_MINOR,
-  DEMO_PROJECTS,
-  DEMO_SPENDING_CUSHION_MINOR,
+  createDemoBook,
   type Project,
 } from './src/demo/demoData';
 import { formatBrazilianDate, parseBrazilianDate } from './src/domain/dates';
@@ -29,6 +22,7 @@ import { brlInputFromMinor, formatBrl, parseBrlToMinor } from './src/domain/mone
 import {
   listMovementsForMonth,
   displayDateOf,
+  displayTimeOf,
   monthAtOffset,
   monthOf,
   currentCashByType,
@@ -45,8 +39,13 @@ import {
   type YearMonth,
 } from './src/domain/movements';
 import { deviceToday } from './src/platform/deviceDate';
+import { openingCashForMonth, projectCashMonths } from './src/domain/projections';
+import { FinanceStore } from './src/application/financeStore';
+import { bookMovements, bookOpeningCash, eligibleMovements, monthEnd, protectedMinor, financialPosition, eligibleOpeningBalance, forecastHorizon, bookTimeZone, historicalMonthSummary } from './src/domain/bookSelectors';
+import type { Account, Category, CommandContext, CreditCard, FinanceBook, FinanceCommand } from './src/domain/book';
+import { FinanceWorkspace } from './src/ui/FinanceWorkspace';
 
-type Screen = 'home' | 'movements' | 'views';
+type Screen = 'home' | 'movements' | 'views' | 'workspace';
 type PortfolioView = 'cards' | 'projects' | 'money';
 type NatureFilter = 'all' | MovementNature;
 type DirectionFilter = 'all' | MovementDirection;
@@ -87,16 +86,17 @@ function moneyTypeLabel(moneyType: MovementMoneyType): string {
   return moneyType === 'digital' ? 'Digital' : 'Físico';
 }
 
-function movementPaymentLabel(movement: Movement): string {
+function movementPaymentLabel(movement: Movement, cards: readonly CreditCard[]): string {
   if (movement.cardId !== null) {
-    return `Crédito · ${movementLabel(movement.cardId, DEMO_CARDS) ?? 'Cartão'}`;
+    return `Crédito · ${movementLabel(movement.cardId, cards) ?? 'Cartão'}`;
   }
   if (movement.direction === 'expense' && movement.moneyType === 'digital') return 'Débito';
   return moneyTypeLabel(movement.moneyType);
 }
 
-function MovementRow({ movement, projects, onPress }: { movement: Movement; projects: readonly Project[]; onPress?: () => void }) {
-  const displayDate = movement.occurredOn ?? movement.expectedOn ?? movement.settledOn ?? movement.plannedSettlementOn;
+function MovementRow({ movement, projects, cards, onPress }: { movement: Movement; projects: readonly Project[]; cards: readonly CreditCard[]; onPress?: () => void }) {
+  const displayDate = displayDateOf(movement);
+  const displayTime = displayTimeOf(movement);
   const cashDate = movement.settledOn ?? movement.plannedSettlementOn;
   const amount = movement.direction === 'expense'
     ? -movement.amountMinor
@@ -112,15 +112,17 @@ function MovementRow({ movement, projects, onPress }: { movement: Movement; proj
         <Text style={styles.movementTitle} numberOfLines={1}>{movement.title}</Text>
         <Text style={styles.movementMeta}>
           {natureLabel(movement.nature)} · {displayDate ? formatBrazilianDate(displayDate) : 'sem data'}
+          {displayTime ? ` ${displayTime}` : null}
         </Text>
-        {cashDate && displayDate && cashDate !== displayDate ? (
+        {cashDate && displayDate && (cashDate !== displayDate || (movement.settledTime && movement.settledTime !== displayTime)) ? (
           <Text style={styles.movementMeta}>
             Caixa {isForecast ? 'previsto' : 'efetivo'}: {formatBrazilianDate(cashDate)}
+            {movement.settledTime ? ` ${movement.settledTime}` : null}
           </Text>
         ) : null}
         <Text style={styles.movementMeta}>
           {[
-            movementPaymentLabel(movement),
+            movementPaymentLabel(movement, cards),
             movementLabel(movement.projectId, projects) ? `Projeto: ${movementLabel(movement.projectId, projects)}` : null,
           ].filter(Boolean).join(' · ')}
         </Text>
@@ -233,6 +235,7 @@ function MonthCard({
         <Text style={styles.lowestText}>
           Menor saldo: <Text style={styles.lowestStrong}>{formatBrl(summary.lowestBalanceMinor)}</Text>
           {' · '}{formatBrazilianDate(summary.lowestBalanceOn)}
+          {summary.lowestBalanceTime ? ` ${summary.lowestBalanceTime}` : null}
         </Text>
       </View>
       {summary.lowestBalanceMinor < 0 ? (
@@ -254,9 +257,11 @@ function DemoBanner() {
 function SafeSpendCard({
   estimate,
   onScenarioChange,
+  demo = true,
 }: {
   estimate: SafeSpendEstimate | null;
   onScenarioChange: (scenario: SafeSpendScenario) => void;
+  demo?: boolean;
 }) {
   if (!estimate) {
     return (
@@ -295,20 +300,22 @@ function SafeSpendCard({
       <Text style={styles.safeSpendDetails}>
         Caixa de teste: {formatBrl(estimate.currentCashMinor)} · menor saldo projetado: {formatBrl(estimate.lowestProjectedBalanceMinor)} em {formatBrazilianDate(estimate.lowestBalanceOn)}
       </Text>
-      {estimate.spendableMinor < 0 ? (
+      {estimate.firstInsufficientOn !== null ? (
         <Text style={styles.safeSpendWarning} accessibilityRole="alert">
-          Atenção: a projeção fica abaixo da reserva e da margem em {formatBrazilianDate(estimate.lowestBalanceOn)}.
+          Atenção: a projeção fica abaixo da reserva e da margem em {formatBrazilianDate(estimate.firstInsufficientOn)}.
         </Text>
       ) : null}
       <Text style={styles.safeSpendFootnote}>
-        Caixa e reserva são fictícios. Exclui {formatBrl(estimate.protectedMinor)} protegidos e margem de {formatBrl(estimate.cushionMinor)}.
+        {demo ? 'Caixa e reserva são fictícios. ' : 'Baseada nos registros informados. '}Exclui {formatBrl(estimate.protectedMinor)} protegidos e margem de {formatBrl(estimate.cushionMinor)}.
         {estimate.scenario === 'conservative' ? ' Ignora receitas previstas incertas.' : ' Inclui receitas previstas.'}
       </Text>
     </View>
   );
 }
 
-export default function App() {
+export default function App({ store: suppliedStore, protectedSession = false, onSettings }: {
+  store?: FinanceStore; protectedSession?: boolean; onSettings?: () => void;
+} = {}) {
   const [screen, setScreen] = useState<Screen>('home');
   const [portfolioView, setPortfolioView] = useState<PortfolioView>('cards');
   const [monthOffset, setMonthOffset] = useState(0);
@@ -322,54 +329,52 @@ export default function App() {
   const [editingMovement, setEditingMovement] = useState<Movement | null>(null);
   const nextTestId = useRef(1);
   const nextProjectId = useRef(1);
-  const [projects, setProjects] = useState<Project[]>(() => DEMO_PROJECTS.map((project) => ({ ...project })));
-  const [movements, setMovements] = useState<Movement[]>(() => {
-    const currentMonth = monthOf(deviceToday());
-    return createDemoMovements(currentMonth);
+  const [ledger] = useState(() => {
+    const initialToday = deviceToday();
+    const month = monthOf(initialToday);
+    return { store: suppliedStore ?? new FinanceStore(createDemoBook(month, initialToday)) };
   });
+  const [book, setBook] = useState<FinanceBook>(() => ledger.store.snapshot());
+  const projects = book.projects;
+  const nextRequestId = useRef(book.audit.length + 1);
+  const [selectedOperationId, setSelectedOperationId] = useState<string | null>(null);
+  const pendingSave = useRef<{ requestId: string; recordedAt: string; movementId: string } | null>(null);
 
-  const today = deviceToday();
+  const today = deviceToday(bookTimeZone(book));
   const currentMonth = monthOf(today);
   const followingMonth = monthAtOffset(currentMonth, 1);
-  const currentSummary = useMemo(
-    () => summarizeMonth(movements, currentMonth, DEMO_OPENING_BALANCE_MINOR),
-    [movements, currentMonth],
+  const selectedMonth = monthAtOffset(currentMonth, monthOffset);
+  const projectionThrough = selectedMonth > followingMonth ? selectedMonth : followingMonth;
+  const movements = useMemo(() => bookMovements(book, monthEnd(projectionThrough)), [book, projectionThrough]);
+  const opening = useMemo(() => ({ month: book.openingMonth, cash: bookOpeningCash(book) }), [book]);
+  const monthSummaries = useMemo(
+    () => projectCashMonths(movements, book.baselineMovements, opening, today, projectionThrough),
+    [movements, book, opening, today, projectionThrough],
+  );
+  const currentSummary = monthSummaries[0];
+  const followingSummary = monthSummaries[1];
+  const openingCash = useMemo(
+    () => openingCashForMonth(movements, book.baselineMovements, opening, currentMonth),
+    [movements, book, opening, currentMonth],
   );
   const currentCash = useMemo(
-    () => currentCashByType(movements, currentMonth, today, DEMO_OPENING_CASH_MINOR),
-    [movements, currentMonth, today],
+    () => currentCashByType(movements, currentMonth, today, openingCash),
+    [movements, currentMonth, today, openingCash],
   );
-  const followingSummary = useMemo(
-    () => summarizeMonth(movements, followingMonth, currentSummary.closingBalanceMinor),
-    [movements, followingMonth, currentSummary.closingBalanceMinor],
-  );
-  const nextIncomeDate = useMemo(() => movements
-    .filter((movement) => movement.nature !== 'realized' && movement.direction === 'income')
-    .map((movement) => movement.plannedSettlementOn)
-    .filter((date): date is NonNullable<Movement['plannedSettlementOn']> => date !== null && date >= today)
-    .sort((dateA, dateB) => dateA.localeCompare(dateB))[0] ?? null,
-  [movements, today]);
-  const safeSpendEstimate = useMemo(() => nextIncomeDate === null ? null : estimateSafeToSpend(movements, {
+  const safeMovements = useMemo(() => eligibleMovements(book, movements), [book, movements]);
+  const safeOpening = useMemo(() => eligibleOpeningBalance(book, movements, currentMonth), [book, currentMonth, movements]);
+  const investmentBalance = useMemo(() => financialPosition(book, today).investmentMinor, [book, today]);
+  const nextIncomeDate = useMemo(() => forecastHorizon(book, safeMovements, today), [book, safeMovements, today]);
+  const safeSpendEstimate = useMemo(() => nextIncomeDate === null ? null : estimateSafeToSpend(safeMovements, {
     asOf: today,
     horizonDate: nextIncomeDate,
-    openingBalanceMinor: DEMO_OPENING_BALANCE_MINOR,
-    protectedMinor: DEMO_PROTECTED_RESERVE_MINOR,
-    cushionMinor: DEMO_SPENDING_CUSHION_MINOR,
+    openingBalanceMinor: safeOpening,
+    protectedMinor: protectedMinor(book, true),
+    cushionMinor: book.cushionMinor,
     scenario: safeSpendScenario,
-  }), [movements, nextIncomeDate, safeSpendScenario, today]);
-  const selectedMonth = monthAtOffset(currentMonth, monthOffset);
-  const selectedSummary = useMemo(() => {
-    if (monthOffset < 0) return null;
-    if (monthOffset === 0) return currentSummary;
-    if (monthOffset === 1) return followingSummary;
-
-    let summary = followingSummary;
-    for (let offset = 2; offset <= monthOffset; offset += 1) {
-      const month = monthAtOffset(currentMonth, offset);
-      summary = summarizeMonth(movements, month, summary.closingBalanceMinor);
-    }
-    return summary;
-  }, [currentMonth, currentSummary, followingSummary, monthOffset, movements]);
+  }), [safeMovements, nextIncomeDate, safeSpendScenario, today, book, safeOpening]);
+  const selectedSummary = monthSummaries.find((summary) => summary.month === selectedMonth)
+    ?? (selectedMonth < currentMonth ? historicalMonthSummary(book, selectedMonth) : null);
   const visibleMovements = listMovementsForMonth(movements, selectedMonth);
   const filteredMovements = useMemo(() => {
     const normalizedSearch = searchText.trim().toLocaleLowerCase('pt-BR');
@@ -390,11 +395,15 @@ export default function App() {
     || sortOrder !== 'newest';
 
   const openNewMovement = () => {
+    pendingSave.current = null;
     setEditingMovement(null);
     setFormOpen(true);
   };
 
   const openEditMovement = (movement: Movement) => {
+    if (movement.operationId) { setSelectedOperationId(movement.operationId); setScreen('workspace'); return; }
+    if (movement.recurrenceKey || movement.flowKind === 'transfer' || movement.flowKind === 'investment') { setScreen('workspace'); return; }
+    pendingSave.current = null;
     setEditingMovement(movement);
     setFormOpen(true);
   };
@@ -407,12 +416,26 @@ export default function App() {
     nature: MovementNature;
     cardId: string | null;
     projectId: string | null;
-    eventDate: NonNullable<Movement['occurredOn']>;
+    accountId: string | undefined;
+    categoryId: string | null;
+    occurredTime: string | null;
+    settledTime: string | null;
+    eventDate: Movement['occurredOn'];
     cashDate: NonNullable<Movement['settledOn']>;
   }) => {
+    const newMovementId = () => {
+      let candidate: string;
+      do { candidate = `test-${nextTestId.current++}`; } while (book.movements.some((entry) => entry.id === candidate) || book.operations.some((entry) => entry.id === candidate));
+      return candidate;
+    };
+    pendingSave.current ??= {
+      requestId: `save-${Date.now()}-${nextRequestId.current++}`,
+      recordedAt: new Date().toISOString(),
+      movementId: editingMovement?.id ?? newMovementId(),
+    };
     const isRealized = input.nature === 'realized';
     const nextMovement: Movement = {
-      id: editingMovement?.id ?? `test-${nextTestId.current++}`,
+      id: pendingSave.current.movementId,
       title: input.title,
       currency: 'BRL',
       direction: input.direction,
@@ -421,15 +444,25 @@ export default function App() {
       nature: input.nature,
       cardId: input.cardId,
       projectId: input.projectId,
-      occurredOn: isRealized ? input.eventDate : null,
-      expectedOn: isRealized ? null : input.eventDate,
+      accountId: input.accountId,
+      categoryId: input.categoryId,
+      occurredTime: isRealized || editingMovement?.occurredOn ? input.occurredTime : null,
+      settledTime: isRealized ? input.settledTime : null,
+      occurredOn: isRealized || editingMovement?.occurredOn ? input.eventDate : null,
+      expectedOn: isRealized || editingMovement?.occurredOn
+        ? editingMovement?.expectedOn ?? null
+        : input.eventDate,
       plannedSettlementOn: isRealized ? null : input.cashDate,
       settledOn: isRealized ? input.cashDate : null,
     };
 
-    setMovements((current) => editingMovement
-      ? current.map((movement) => movement.id === editingMovement.id ? nextMovement : movement)
-      : [...current, nextMovement]);
+    ledger.store.save({
+      requestId: pendingSave.current.requestId,
+      recordedAt: pendingSave.current.recordedAt,
+      today,
+      movement: nextMovement,
+    });
+    setBook(ledger.store.snapshot());
     setEditingMovement(null);
     setFormOpen(false);
     setScreen('movements');
@@ -441,12 +474,15 @@ export default function App() {
   };
 
   const saveProject = (name: string, description: string) => {
+    let projectId: string;
+    do { projectId = `test-project-${nextProjectId.current++}`; } while (book.projects.some((entry) => entry.id === projectId));
     const project: Project = {
-      id: `test-project-${nextProjectId.current++}`,
+      id: projectId,
       name,
       description,
     };
-    setProjects((current) => [...current, project]);
+    ledger.store.execute({ kind: 'save-project', project }, { requestId: `project-${Date.now()}-${nextRequestId.current++}`, recordedAt: new Date().toISOString(), today });
+    setBook(ledger.store.snapshot());
     setPortfolioView('projects');
     setScreen('views');
     setProjectFormOpen(false);
@@ -472,14 +508,16 @@ export default function App() {
           </Pressable>
         </View>
 
-        <DemoBanner />
+        {protectedSession ? <View style={styles.demoBanner}><Text style={styles.demoBannerText}>REGISTROS LOCAIS · banco cifrado</Text><Pressable accessibilityRole="button" onPress={onSettings}><Text>Segurança e backup</Text></Pressable></View> : <DemoBanner />}
 
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {screen === 'home' ? (
+          {screen === 'home' && !book.accounts.some((account) => account.kind === 'cash') ? (
+            <View style={styles.emptyCard}><Text style={styles.emptyTitle}>Seu livro está vazio</Text><Text style={styles.emptyText}>Cadastre uma conta e informe o saldo de abertura para começar. Nenhum saldo bancário foi presumido.</Text><Pressable accessibilityRole="button" onPress={() => setScreen('workspace')} style={styles.primaryButton}><Text style={styles.primaryButtonText}>Organizar contas</Text></Pressable></View>
+          ) : screen === 'home' ? (
             <>
               <Text style={styles.eyebrow}>VISÃO GERAL</Text>
               <Text style={styles.pageTitle}>Seu dinheiro, mês a mês.</Text>
@@ -487,14 +525,14 @@ export default function App() {
                 Veja o que já aconteceu e o que ainda está previsto.
               </Text>
 
-              <SafeSpendCard estimate={safeSpendEstimate} onScenarioChange={setSafeSpendScenario} />
+              <SafeSpendCard estimate={safeSpendEstimate} demo={!protectedSession} onScenarioChange={setSafeSpendScenario} />
               <MonthCard summary={currentSummary} subtitle="Mês atual · inclui previsões" />
               <MonthCard summary={followingSummary} subtitle="Próximo mês · projeção" />
 
               <SectionHeader title="Movimentações deste mês" action="Ver todas" onPress={() => setScreen('movements')} />
               <View style={styles.listCard}>
                 {listMovementsForMonth(movements, currentMonth).slice(0, 4).map((movement) => (
-                  <MovementRow key={movement.id} movement={movement} projects={projects} onPress={() => openEditMovement(movement)} />
+                  <MovementRow key={movement.id} movement={movement} projects={projects} cards={book.cards} onPress={() => openEditMovement(movement)} />
                 ))}
               </View>
 
@@ -553,7 +591,7 @@ export default function App() {
 
               {selectedSummary ? (
                 <View style={styles.compactBalance}>
-                  <Text style={styles.compactBalanceLabel}>Saldo previsto no fechamento</Text>
+                  <Text style={styles.compactBalanceLabel}>{selectedMonth < currentMonth ? 'Fechamento registrado · somente liquidações' : 'Saldo previsto no fechamento'}</Text>
                   <Text
                     testID={`movement-closing-balance-${selectedMonth}`}
                     style={[styles.compactBalanceValue, selectedSummary.closingBalanceMinor < 0 && styles.negativeBalance]}
@@ -574,7 +612,7 @@ export default function App() {
                 <View style={styles.emptyCard} testID="historical-balance-unavailable">
                   <Text style={styles.emptyTitle}>Saldo histórico indisponível</Text>
                   <Text style={styles.emptyText}>
-                    Esta amostra não tem saldo de abertura para {monthLabel(selectedMonth)}. O cálculo do impacto retroativo ainda não está disponível.
+                    Esta amostra não tem saldo de abertura para {monthLabel(selectedMonth)}. Correções retroativas atualizam o caixa atual e as projeções, mas não permitem reconstruir um saldo histórico desconhecido.
                   </Text>
                 </View>
               )}
@@ -642,7 +680,7 @@ export default function App() {
               {filteredMovements.length > 0 ? (
                 <View style={styles.listCard}>
                   {filteredMovements.map((movement) => (
-                    <MovementRow key={movement.id} movement={movement} projects={projects} onPress={() => openEditMovement(movement)} />
+                    <MovementRow key={movement.id} movement={movement} projects={projects} cards={book.cards} onPress={() => openEditMovement(movement)} />
                   ))}
                 </View>
               ) : (
@@ -662,11 +700,15 @@ export default function App() {
                 <Text style={styles.primaryButtonText}>＋  Registrar movimentação de teste</Text>
               </Pressable>
             </>
+          ) : screen === 'workspace' ? (
+            <FinanceWorkspace book={book} today={today} selectedOperationId={selectedOperationId} onSelectOperation={setSelectedOperationId}
+              persistent={protectedSession}
+              onCommand={(command: FinanceCommand, context: CommandContext) => { ledger.store.execute(command, context); setBook(ledger.store.snapshot()); }} />
           ) : (
             <>
               <Text style={styles.eyebrow}>SUAS VISÕES</Text>
               <Text style={styles.pageTitle}>Cartões, projetos e dinheiro.</Text>
-              <Text style={styles.pageLead}>Organize os mesmos lançamentos por contexto. Tudo abaixo usa dados fictícios.</Text>
+              <Text style={styles.pageLead}>Organize os mesmos lançamentos por contexto.{protectedSession ? ' Os valores vêm dos seus registros.' : ' Tudo abaixo usa dados fictícios.'}</Text>
 
               <View style={styles.portfolioTabs}>
                 <FilterChip label="Cartões" selected={portfolioView === 'cards'} testID="view-cards" onPress={() => setPortfolioView('cards')} />
@@ -679,7 +721,7 @@ export default function App() {
                   <View style={styles.portfolioCard}>
                     <Text style={styles.sectionTitle}>Cartões de crédito</Text>
                     <Text style={styles.portfolioDescription}>Compras previstas e a data em que o caixa seria afetado.</Text>
-                    {DEMO_CARDS.map((card) => {
+                    {book.cards.map((card) => {
                       const cardMovements = movements.filter((movement) => movement.cardId === card.id);
                       return (
                         <View key={card.id} style={styles.portfolioGroup}>
@@ -687,7 +729,7 @@ export default function App() {
                           {cardMovements.length ? (
                             <View style={styles.listCard}>
                               {cardMovements.map((movement) => (
-                                <MovementRow key={movement.id} movement={movement} projects={projects} onPress={() => openEditMovement(movement)} />
+                                <MovementRow key={movement.id} movement={movement} projects={projects} cards={book.cards} onPress={() => openEditMovement(movement)} />
                               ))}
                             </View>
                           ) : (
@@ -697,7 +739,7 @@ export default function App() {
                       );
                     })}
                   </View>
-                  <Text style={styles.portfolioFootnote}>Esta prévia ainda não controla fatura, parcelas ou pagamento do cartão. O compromisso aparece uma vez na projeção de caixa.</Text>
+                  <Text style={styles.portfolioFootnote}>Registre faturas, parcelas, pagamentos e créditos na aba Organizar. Compra e pagamento não duplicam o efeito de caixa.</Text>
                 </>
               ) : null}
 
@@ -729,7 +771,7 @@ export default function App() {
                         {projectMovements.length ? (
                           <View style={styles.listCard}>
                             {projectMovements.map((movement) => (
-                              <MovementRow key={movement.id} movement={movement} projects={projects} onPress={() => openEditMovement(movement)} />
+                              <MovementRow key={movement.id} movement={movement} projects={projects} cards={book.cards} onPress={() => openEditMovement(movement)} />
                             ))}
                           </View>
                         ) : (
@@ -738,7 +780,7 @@ export default function App() {
                       </View>
                     );
                   })}
-                  <Text style={styles.portfolioFootnote}>O resumo soma apenas movimentos associados ao projeto, com totais acumulados e estados separados. É um fluxo de caixa; custos de produção, estoque e margem ainda não são calculados nesta POC.</Text>
+                  <Text style={styles.portfolioFootnote}>Este resumo mostra fluxo de caixa. Custos de produção informados manualmente e resultados das vendas ficam em Organizar, separados dos pagamentos.</Text>
                 </>
               ) : null}
 
@@ -748,7 +790,7 @@ export default function App() {
                     <Text style={styles.moneyTypeTitle}>Dinheiro digital</Text>
                     <Text style={styles.moneyTypeValue}>{formatBrl(currentCash.digital)}</Text>
                     <Text style={styles.portfolioDescription}>Saldo de demonstração em conta digital/bancária.</Text>
-                    <Text style={styles.portfolioFootnote}>A reserva de teste de {formatBrl(DEMO_PROTECTED_RESERVE_MINOR)} já está dentro deste caixa e não é somada de novo.</Text>
+                    <Text style={styles.portfolioFootnote}>A reserva de {formatBrl(protectedMinor(book))} já está dentro do caixa e não é somada de novo.</Text>
                   </View>
                   <View style={styles.moneyCard} testID="money-type-physical">
                     <Text style={styles.moneyTypeTitle}>Dinheiro físico</Text>
@@ -757,10 +799,10 @@ export default function App() {
                   </View>
                   <View style={styles.moneyCard} testID="money-type-investments">
                     <Text style={styles.moneyTypeTitle}>Investimentos</Text>
-                    <Text style={styles.moneyTypeValue}>{formatBrl(DEMO_INVESTMENT_BALANCE_MINOR)}</Text>
+                    <Text style={styles.moneyTypeValue}>{formatBrl(investmentBalance)}</Text>
                     <Text style={styles.portfolioDescription}>Patrimônio ilustrativo, separado do caixa e do gasto seguro.</Text>
                   </View>
-                  <Text style={styles.portfolioFootnote}>Escolha Digital ou Físico no formulário. Investimentos aparecem separados porque aporte, resgate e valorização exigem registros próprios, ainda fora desta POC.</Text>
+                  <Text style={styles.portfolioFootnote}>Registre aportes, resgates e avaliações em Organizar. Investimentos ficam separados do caixa disponível e valorização não é dinheiro recebido.</Text>
                 </>
               ) : null}
             </>
@@ -771,6 +813,7 @@ export default function App() {
           <TabButton label="Início" glyph="⌂" active={screen === 'home'} onPress={() => setScreen('home')} />
           <TabButton label="Movimentações" glyph="≋" active={screen === 'movements'} onPress={() => setScreen('movements')} />
           <TabButton label="Visões" glyph="▦" active={screen === 'views'} onPress={() => setScreen('views')} />
+          <TabButton label="Organizar" glyph="☷" active={screen === 'workspace'} onPress={() => setScreen('workspace')} />
         </View>
       </View>
 
@@ -779,6 +822,15 @@ export default function App() {
         today={today}
         movement={editingMovement}
         projects={projects}
+        accounts={book.accounts}
+        categories={book.categories}
+        cards={book.cards}
+        isDemo={!protectedSession}
+        onActions={editingMovement ? () => {
+          const movementId = editingMovement.id;
+          ledger.store.execute({ kind: 'promote-movement', movementId }, { requestId: `promote-${Date.now()}-${nextRequestId.current++}`, recordedAt: new Date().toISOString(), today });
+          setBook(ledger.store.snapshot()); setFormOpen(false); setEditingMovement(null); setSelectedOperationId(movementId); setScreen('workspace');
+        } : undefined}
         onClose={() => {
           setFormOpen(false);
           setEditingMovement(null);
@@ -853,7 +905,7 @@ function TabButton({
     <Pressable
       onPress={onPress}
       accessibilityRole="tab"
-      testID={`tab-${label === 'Início' ? 'home' : label === 'Movimentações' ? 'movements' : 'views'}`}
+      testID={`tab-${label === 'Início' ? 'home' : label === 'Movimentações' ? 'movements' : label === 'Organizar' ? 'workspace' : 'views'}`}
       accessibilityState={{ selected: active }}
       style={styles.tabButton}
     >
@@ -868,6 +920,11 @@ function MovementForm({
   today,
   movement,
   projects,
+  accounts,
+  categories,
+  cards,
+  onActions,
+  isDemo,
   onClose,
   onSave,
 }: {
@@ -875,6 +932,11 @@ function MovementForm({
   today: NonNullable<Movement['occurredOn']>;
   movement: Movement | null;
   projects: readonly Project[];
+  accounts: readonly Account[];
+  categories: readonly Category[];
+  cards: readonly CreditCard[];
+  onActions?: () => void;
+  isDemo: boolean;
   onClose: () => void;
   onSave: (input: {
     title: string;
@@ -884,7 +946,11 @@ function MovementForm({
     nature: MovementNature;
     cardId: string | null;
     projectId: string | null;
-    eventDate: NonNullable<Movement['occurredOn']>;
+    accountId: string | undefined;
+    categoryId: string | null;
+    occurredTime: string | null;
+    settledTime: string | null;
+    eventDate: Movement['occurredOn'];
     cashDate: NonNullable<Movement['settledOn']>;
   }) => void;
 }) {
@@ -897,21 +963,28 @@ function MovementForm({
   const [nature, setNature] = useState<MovementNature>('realized');
   const [cardId, setCardId] = useState<string | null>(null);
   const [projectId, setProjectId] = useState<string | null>(null);
+  const [accountId, setAccountId] = useState<string | undefined>();
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [occurredTime, setOccurredTime] = useState('');
+  const [settledTime, setSettledTime] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const loadFormValues = () => {
     if (movement) {
-      const eventDate = movement.occurredOn ?? movement.expectedOn ?? movement.settledOn ?? movement.plannedSettlementOn ?? today;
-      const cashDate = movement.settledOn ?? movement.plannedSettlementOn ?? eventDate;
+      const eventDate = movement.occurredOn ?? movement.expectedOn;
+      const cashDate = movement.settledOn ?? movement.plannedSettlementOn;
       setTitle(movement.title);
       setAmountText(brlInputFromMinor(movement.amountMinor));
-      setEventDateText(formatBrazilianDate(eventDate));
-      setCashDateText(formatBrazilianDate(cashDate));
+      setEventDateText(eventDate ? formatBrazilianDate(eventDate) : '');
+      setCashDateText(cashDate ? formatBrazilianDate(cashDate) : '');
       setDirection(movement.direction);
       setMoneyType(movement.moneyType);
       setNature(movement.nature);
       setCardId(movement.cardId);
       setProjectId(movement.projectId);
+      setAccountId(movement.accountId ?? accounts.find((account) => account.kind === 'cash' && account.moneyType === movement.moneyType)?.id);
+      setCategoryId(movement.categoryId ?? null);
+      setOccurredTime(movement.occurredTime ?? ''); setSettledTime(movement.settledTime ?? '');
     } else {
       const todayText = formatBrazilianDate(today);
       setTitle('');
@@ -923,6 +996,9 @@ function MovementForm({
       setNature('realized');
       setCardId(null);
       setProjectId(null);
+      setAccountId(accounts.find((account) => account.kind === 'cash' && account.moneyType === 'digital')?.id);
+      setCategoryId(null);
+      setOccurredTime(''); setSettledTime('');
     }
     setError(null);
   };
@@ -940,8 +1016,12 @@ function MovementForm({
       setError('Digite um valor válido, por exemplo 25,90.');
       return;
     }
-    if (!eventDate || !cashDate) {
+    if (!cashDate || (eventDateText.trim() !== '' && !eventDate)) {
       setError('Confira as datas no formato DD/MM/AAAA.');
+      return;
+    }
+    if (nature === 'realized' && cashDate > today) {
+      setError('Pagamento futuro deve ficar como compromisso ou previsão.');
       return;
     }
     if (cardId !== null && (direction !== 'expense' || nature === 'realized')) {
@@ -949,7 +1029,7 @@ function MovementForm({
       return;
     }
 
-    onSave({
+    try { onSave({
       title: title.trim(),
       direction,
       moneyType,
@@ -957,13 +1037,18 @@ function MovementForm({
       nature,
       cardId,
       projectId,
+      accountId: accountId && accounts.find((account) => account.id === accountId)?.moneyType === moneyType
+        ? accountId : accounts.find((account) => account.kind === 'cash' && account.moneyType === moneyType)?.id,
+      categoryId,
+      occurredTime: occurredTime.trim() || null,
+      settledTime: settledTime.trim() || null,
       eventDate,
       cashDate,
-    });
+    }); } catch (failure) { setError(failure instanceof Error ? failure.message : 'Não foi possível salvar o registro.'); }
   };
 
   const isRealized = nature === 'realized';
-  const eventFieldLabel = cardId !== null
+  const eventFieldLabel = movement?.occurredOn ? 'Data do fato' : cardId !== null
     ? 'Data prevista da compra'
     : isRealized ? 'Data do fato' : 'Data prevista do evento';
   const cashFieldLabel = cardId !== null
@@ -1071,6 +1156,13 @@ function MovementForm({
               </View>
             </Field>
 
+            {isRealized || movement?.occurredOn ? <Field label="Hora do fato, opcional" hint="HH:MM. Deixe vazia quando não souber.">
+              <TextInput accessibilityLabel="Hora do fato, opcional" value={occurredTime} onChangeText={setOccurredTime} maxLength={5} style={styles.input} />
+            </Field> : null}
+            {isRealized ? <Field label="Hora do pagamento, opcional" hint="Não é preenchida automaticamente.">
+              <TextInput accessibilityLabel="Hora do pagamento, opcional" value={settledTime} onChangeText={setSettledTime} maxLength={5} style={styles.input} />
+            </Field> : null}
+
             <Field label="Tipo de dinheiro">
               <View style={styles.formChipRow}>
                 <FilterChip label="Digital" selected={moneyType === 'digital'} testID="movement-money-digital" onPress={() => setMoneyType('digital')} />
@@ -1088,6 +1180,18 @@ function MovementForm({
               </ScrollView>
             </Field>
 
+            <Field label="Conta">
+              <View style={styles.formChipRow}>{accounts.filter((account) => account.kind === 'cash' && account.moneyType === moneyType).map((account) => (
+                <FilterChip key={account.id} label={account.name} selected={accountId === account.id} testID={`movement-account-${account.id}`} onPress={() => setAccountId(account.id)} />
+              ))}</View>
+            </Field>
+            <Field label="Categoria (opcional)">
+              <View style={styles.formChipRow}>
+                <FilterChip label="Sem categoria" selected={categoryId === null} testID="movement-category-none" onPress={() => setCategoryId(null)} />
+                {categories.map((category) => <FilterChip key={category.id} label={category.name} selected={categoryId === category.id} testID={`movement-category-${category.id}`} onPress={() => setCategoryId(category.id)} />)}
+              </View>
+            </Field>
+
             <Field label={direction === 'expense' ? 'Forma de pagamento' : 'Meio de recebimento'}>
               <View style={styles.formChipRow}>
                 <FilterChip
@@ -1098,7 +1202,7 @@ function MovementForm({
                   testID="movement-card-none"
                   onPress={() => setCardId(null)}
                 />
-                {direction === 'expense' ? DEMO_CARDS.map((card) => (
+                {direction === 'expense' ? cards.map((card) => (
                   <FilterChip key={card.id} label={`Crédito · ${card.name}`} selected={cardId === card.id} testID={`movement-card-${card.id}`} onPress={() => { setCardId(card.id); setMoneyType('digital'); setNature('commitment'); }} />
                 )) : null}
               </View>
@@ -1112,11 +1216,13 @@ function MovementForm({
 
             {error ? <Text style={styles.formError} accessibilityRole="alert">{error}</Text> : null}
 
+            {onActions ? <Pressable accessibilityRole="button" testID="movement-actions" onPress={() => { try { onActions(); } catch (failure) { setError(failure instanceof Error ? failure.message : 'Não foi possível abrir as ações.'); } }} style={styles.sortButton}><Text>Pagamentos, parcelas e reembolsos</Text></Pressable> : null}
+
             <Pressable style={styles.saveButton} onPress={save} accessibilityRole="button" testID="movement-save-button">
               <Text style={styles.saveButtonText}>{movement ? 'Salvar alteração de teste' : 'Adicionar aos dados de teste'}</Text>
             </Pressable>
             <Text style={styles.formFootnote}>
-              Este lançamento fica apenas na memória e desaparece ao fechar o app.
+              {isDemo ? 'Este lançamento fica apenas na memória e desaparece ao fechar o app.' : 'Este registro é salvo neste aparelho, protegido pela chave local.'}
             </Text>
           </ScrollView>
         </View>
@@ -1163,7 +1269,8 @@ function ProjectForm({
       return;
     }
 
-    onSave(normalizedName, normalizedDescription);
+    try { onSave(normalizedName, normalizedDescription); }
+    catch (failure) { setError(failure instanceof Error ? failure.message : 'Não foi possível salvar o projeto.'); }
   };
 
   return (

@@ -20,6 +20,12 @@ export interface Movement {
   /** Demo card/project labels; these do not create extra cash flows. */
   cardId: string | null;
   projectId: string | null;
+  accountId?: string;
+  categoryId?: string | null;
+  operationId?: string;
+  recurrenceKey?: string;
+  obligationId?: string;
+  flowKind?: 'external' | 'transfer' | 'investment' | 'refund';
   /** Date of the economic event; null while a future event has not happened. */
   occurredOn: CivilDate | null;
   /** Expected event date, kept separate from its expected cash date. */
@@ -28,6 +34,10 @@ export interface Movement {
   plannedSettlementOn: CivilDate | null;
   /** Effective cash date; only set after payment/receipt is confirmed. */
   settledOn: CivilDate | null;
+  occurredTime?: string | null;
+  settledTime?: string | null;
+  /** Payment and obligation rows keep their own chronology without rewriting the purchase date. */
+  displayOn?: CivilDate;
 }
 
 export interface MonthSummary {
@@ -45,6 +55,7 @@ export interface MonthSummary {
   closingBalanceMinor: number;
   lowestBalanceMinor: number;
   lowestBalanceOn: CivilDate;
+  lowestBalanceTime?: string | null;
 }
 
 export interface ProjectFlowBucket {
@@ -79,6 +90,8 @@ export interface SafeSpendEstimate {
   currentCashMinor: number;
   lowestProjectedBalanceMinor: number;
   lowestBalanceOn: CivilDate;
+  /** First day below protected money plus cushion; distinct from the minimum. */
+  firstInsufficientOn: CivilDate | null;
   protectedMinor: number;
   cushionMinor: number;
   spendableMinor: number;
@@ -112,14 +125,19 @@ export function monthOf(date: CivilDate): YearMonth {
 }
 
 export function displayDateOf(movement: Movement): CivilDate | null {
-  return movement.occurredOn ?? movement.expectedOn ?? movement.settledOn ?? movement.plannedSettlementOn;
+  return movement.displayOn ?? movement.occurredOn ?? (movement.nature === 'realized' ? movement.settledOn : movement.expectedOn) ?? movement.expectedOn ?? movement.plannedSettlementOn;
+}
+
+export function displayTimeOf(movement: Movement): string | null {
+  if (movement.displayOn) return movement.nature === 'realized' ? movement.settledTime ?? null : null;
+  return movement.occurredOn ? movement.occurredTime ?? null : movement.nature === 'realized' ? movement.settledTime ?? null : null;
 }
 
 export function cashDateOf(movement: Movement): CivilDate | null {
   return movement.settledOn ?? movement.plannedSettlementOn;
 }
 
-function validateCivilDate(date: CivilDate, label: string): void {
+export function validateCivilDate(date: CivilDate, label: string): void {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
   if (!match) throw new TypeError(`${label} must be a valid civil date.`);
 
@@ -129,6 +147,12 @@ function validateCivilDate(date: CivilDate, label: string): void {
   if (year < 1 || month < 1 || month > 12 || day < 1 || day > daysInMonth(year, month)) {
     throw new RangeError(`${label} must be a valid civil date.`);
   }
+}
+
+export function validateOptionalTime(time: string | null | undefined, date: CivilDate | null): void {
+  if (time == null) return;
+  if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time)) throw new TypeError('Informe o horário como HH:MM ou deixe vazio.');
+  if (date === null) throw new TypeError('Horário exige a data correspondente.');
 }
 
 function assertSafeInteger(value: number, label: string): void {
@@ -235,10 +259,14 @@ export function estimateSafeToSpend(
   let balanceMinor = currentCashMinor;
   let lowestBalanceMinor = currentCashMinor;
   let lowestBalanceOn = options.asOf;
+  const protectedFloor = options.protectedMinor + options.cushionMinor;
+  assertSafeInteger(protectedFloor, 'Protected floor');
+  let firstInsufficientOn: CivilDate | null = balanceMinor < protectedFloor ? options.asOf : null;
   const orderedFlows = [...dailyFlows.entries()].sort(([dateA], [dateB]) => dateA.localeCompare(dateB));
   for (const [date, dailyNetMinor] of orderedFlows) {
     balanceMinor += dailyNetMinor;
     assertSafeInteger(balanceMinor, 'Projected balance');
+    if (firstInsufficientOn === null && balanceMinor < protectedFloor) firstInsufficientOn = date;
     if (balanceMinor < lowestBalanceMinor) {
       lowestBalanceMinor = balanceMinor;
       lowestBalanceOn = date;
@@ -254,19 +282,30 @@ export function estimateSafeToSpend(
     currentCashMinor,
     lowestProjectedBalanceMinor: lowestBalanceMinor,
     lowestBalanceOn,
+    firstInsufficientOn,
     protectedMinor: options.protectedMinor,
     cushionMinor: options.cushionMinor,
     spendableMinor,
   };
 }
 
-function validateMovement(movement: Movement): void {
-  if (!movement.id.trim() || !movement.title.trim()) {
+export function validateMovement(movement: Movement): void {
+  if (typeof movement.id !== 'string' || typeof movement.title !== 'string' || !movement.id.trim() || !movement.title.trim()) {
     throw new TypeError('Movement id and title are required.');
+  }
+  if (movement.currency !== 'BRL') throw new TypeError('Movement currency must be BRL.');
+  if (movement.direction !== 'income' && movement.direction !== 'expense') {
+    throw new TypeError('Unknown movement direction.');
+  }
+  if (!['realized', 'commitment', 'forecast'].includes(movement.nature)) {
+    throw new TypeError('Unknown movement state.');
   }
   for (const date of [movement.occurredOn, movement.expectedOn, movement.plannedSettlementOn, movement.settledOn]) {
     if (date !== null) validateCivilDate(date, 'Movement date');
   }
+  if (movement.displayOn !== undefined) validateCivilDate(movement.displayOn, 'Display date');
+  validateOptionalTime(movement.occurredTime, movement.occurredOn);
+  validateOptionalTime(movement.settledTime, movement.settledOn);
   if (!Number.isSafeInteger(movement.amountMinor) || movement.amountMinor <= 0) {
     throw new RangeError('Movement amount must be positive integer centavos.');
   }
@@ -274,7 +313,7 @@ function validateMovement(movement: Movement): void {
     throw new TypeError('Movement money type must be digital or physical cash.');
   }
   if (movement.cardId !== null && (
-    !movement.cardId.trim()
+    typeof movement.cardId !== 'string' || !movement.cardId.trim()
     || movement.direction !== 'expense'
     || movement.moneyType !== 'digital'
     || movement.nature === 'realized'
@@ -282,14 +321,16 @@ function validateMovement(movement: Movement): void {
     throw new TypeError('A credit card movement must be an unsettled digital expense.');
   }
   for (const labelId of [movement.cardId, movement.projectId]) {
-    if (labelId !== null && !labelId.trim()) throw new TypeError('Movement labels cannot be empty.');
+    if (labelId !== null && (typeof labelId !== 'string' || !labelId.trim())) throw new TypeError('Movement labels cannot be empty.');
   }
   if (movement.nature === 'realized') {
-    if (!movement.occurredOn || !movement.settledOn || movement.plannedSettlementOn) {
-      throw new TypeError('A realized movement needs a fact date and effective cash date only.');
+    if (!movement.settledOn || movement.plannedSettlementOn) {
+      throw new TypeError('A realized movement needs an effective cash date, with no pending cash date.');
     }
   } else if (movement.settledOn) {
     throw new TypeError('A pending movement cannot have an effective cash date.');
+  } else if (!movement.plannedSettlementOn) {
+    throw new TypeError('A pending cash movement needs a planned settlement date. Undated wishes are separate plans.');
   }
 }
 
@@ -297,6 +338,8 @@ export function listMovementsForMonth(
   movements: readonly Movement[],
   month: YearMonth,
 ): Movement[] {
+  monthAtOffset(month, 0);
+  movements.forEach(validateMovement);
   return movements
     .filter((movement) => {
       const date = displayDateOf(movement);
@@ -306,7 +349,9 @@ export function listMovementsForMonth(
     .sort((a, b) => {
       const dateA = displayDateOf(a) ?? '';
       const dateB = displayDateOf(b) ?? '';
-      return dateB.localeCompare(dateA) || b.id.localeCompare(a.id);
+      const timeA = displayTimeOf(a); const timeB = displayTimeOf(b);
+      const byTime = timeA === null ? timeB === null ? 0 : 1 : timeB === null ? -1 : timeB.localeCompare(timeA);
+      return dateB.localeCompare(dateA) || byTime || b.id.localeCompare(a.id);
     });
 }
 
@@ -315,6 +360,7 @@ export function summarizeMonth(
   month: YearMonth,
   openingBalanceMinor: number,
 ): MonthSummary {
+  monthAtOffset(month, 0);
   if (!Number.isSafeInteger(openingBalanceMinor)) {
     throw new RangeError('Opening balance must be integer centavos.');
   }
@@ -344,12 +390,15 @@ export function summarizeMonth(
   let balanceMinor = openingBalanceMinor;
   let lowestBalanceMinor = openingBalanceMinor;
   let lowestBalanceOn = `${month}-01` as CivilDate;
+  let lowestBalanceTime: string | null = null;
 
   for (let index = 0; index < flows.length;) {
     const date = flows[index].date;
     let dailyInflowMinor = 0;
     let dailyOutflowMinor = 0;
     let dailyNetMinor = 0;
+    let allTimesKnown = true;
+    const minuteFlows = new Map<string, number>();
 
     // No movement time is stored, so ID ordering must not invent an intraday low.
     while (index < flows.length && flows[index].date === date) {
@@ -362,9 +411,22 @@ export function summarizeMonth(
         ? movement.amountMinor
         : -movement.amountMinor;
 
+      dailyNetMinor += signedAmount;
+      const time = movement.settledTime;
+      if (time == null) allTimesKnown = false;
+      else {
+        const minuteNet = (minuteFlows.get(time) ?? 0) + signedAmount;
+        assertSafeInteger(minuteNet, 'Minute flow'); minuteFlows.set(time, minuteNet);
+      }
+
+      // Internal transfers change individual cash locations, never revenue/expense totals.
+      if (movement.flowKind === 'transfer') {
+        index += 1;
+        if (!Number.isSafeInteger(dailyNetMinor)) throw new RangeError('Daily transfer flow exceeds safe integer centavos.');
+        continue;
+      }
       if (signedAmount > 0) dailyInflowMinor += signedAmount;
       else dailyOutflowMinor += -signedAmount;
-      dailyNetMinor += signedAmount;
 
       if (movement.direction === 'income') {
         if (movement.nature === 'realized') realizedInflowMinor += movement.amountMinor;
@@ -396,6 +458,13 @@ export function summarizeMonth(
 
     inflowMinor += dailyInflowMinor;
     outflowMinor += dailyOutflowMinor;
+    if (allTimesKnown) {
+      let timedBalance = balanceMinor;
+      for (const [time, flow] of [...minuteFlows.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+        timedBalance += flow; assertSafeInteger(timedBalance, 'Timed cash balance');
+        if (timedBalance < lowestBalanceMinor) { lowestBalanceMinor = timedBalance; lowestBalanceOn = date; lowestBalanceTime = time; }
+      }
+    }
     balanceMinor += dailyNetMinor;
     if (!Number.isSafeInteger(inflowMinor) || !Number.isSafeInteger(outflowMinor) || !Number.isSafeInteger(balanceMinor)) {
       throw new RangeError('Monthly totals exceed safe integer centavos.');
@@ -403,6 +472,7 @@ export function summarizeMonth(
     if (balanceMinor < lowestBalanceMinor) {
       lowestBalanceMinor = balanceMinor;
       lowestBalanceOn = date;
+      lowestBalanceTime = null;
     }
   }
 
@@ -421,6 +491,7 @@ export function summarizeMonth(
     closingBalanceMinor: balanceMinor,
     lowestBalanceMinor,
     lowestBalanceOn,
+    lowestBalanceTime,
   };
 }
 

@@ -1,0 +1,2 @@
+id;descricao;tipo;estado;valor_brl;data_fato;data_prevista_evento;data_caixa;hora_fato;hora_caixa;conta_id;categoria_id;projeto_id;cartao_id;moeda;natureza_fluxo;operacao_origem
+exemplo-ficticio-1;Compra fictícia para revisar;expense;forecast;20,00;;2026-11-05;2026-11-10;;;digital;food;;;BRL;external;

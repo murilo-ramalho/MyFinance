@@ -1,4 +1,4 @@
-# 08 — Estratégia de testes e aceite
+﻿# 08 — Estratégia de testes e aceite
 
 ## Pirâmide pragmática
 
@@ -86,7 +86,7 @@ Escrever teste de comportamento antes ou junto da regra crítica; evitar mocks q
 | CT-044 | Cancelar uma dívida sem comprovada dispensa | não permite «ignorar parcela» como se extinta; oferece reagendar/pagar/registrar dispensa confirmada |
 | CT-045 | Mudar valor só da ocorrência de dezembro | série inalterada nos demais meses; exceção persistente após regeneração |
 | CT-046 | Aplicação em lote falha na metade | rollback integral de obrigações, eventos e exceções |
-| CT-047 | Consumo de filamento antes comprado | custo projeto muda, banco não sofre segunda saída |
+| CT-047 | Consumo de filamento antes comprado e custo produtivo informado | estoque reduz; custo informado afeta resultado; banco não sofre segunda saída |
 | CT-048 | Saldo outubro 30891 centavos e entradas novembro 241000, saídas 194212 | fechamento novembro = 77679 centavos |
 | CT-049 | Planejamento de despesa 600 e confirmação de 636 | desvio +36, caixa contabilizado uma vez |
 | CT-050 | Alterar data de pagamento anterior ao vencimento e depois estornar | mês e dia da saída e do crédito corretos; sem remover eventos históricos |
@@ -95,15 +95,23 @@ Escrever teste de comportamento antes ou junto da regra crítica; evitar mocks q
 
 A especificação inclui fixtures sintéticas verificáveis em `docs/18-cenarios-de-aceite.json`.
 
-## Cobertura do shell de teste
+## Cobertura implementada — 04/11/2026
 
-O shell atual usa três níveis executáveis ou preparados:
+- **97 testes Node:** dinheiro/datas/projeções, comandos de negócio, armazenamento, SQLite real com dados sintéticos, backup autenticado com provedor Node e CSV. Executar `npm run test:unit`.
+- **36 testes de interface:** navegação, criação/edição, histórico, custos manuais, parcelas/pagamento parcial, reembolso pendente/recebido, transferências, aquisições, recorrências, horários, horizonte, falha de persistência e ciclo de bloqueio. Executar `npm run test:ui`.
+- **5 fluxos Maestro preparados:** navegação, criação/edição, validação, visões e prova nativa isolada. Não executados: faltam SDK, dispositivo/emulador e Maestro.
 
-- `../mobile/tests/*.test.ts`: regressões unitárias de dinheiro, datas, ordenação, projeção mensal, fluxo por data de caixa, negativos, eventos sem hora, vendas iguais mantidas distintas, cálculo de gasto seguro (cenários conservador/esperado, atrasos e margem), CT-048 e limites de inteiros seguros. Executar com `npm run test:unit`.
-- `../mobile/tests/ui/App.test.tsx`: interações da tela e formulário em ambiente React Native simulado; cobre meses inicial/seguinte, separação de totais realizados/compromissados/previstos, estimativa demonstrativa de gasto seguro e troca de cenário, busca, filtros de situação/tipo, ordem cronológica, navegação para períodos passados/futuros, aviso quando não há abertura histórica, criação, edição sem sobrescrever campos, validação e distinção entre evento e caixa. Executar com `npm run test:ui`.
-- `../mobile/.maestro/*.yaml`: jornadas ponta a ponta contra o APK Android instalado, cobrindo navegação, criação, reabertura do formulário, entradas inválidas e as visões de cartão/projeto/tipos de dinheiro. Executar com `npm run test:e2e` em uma máquina com Maestro e Android configurados.
+`financeBook.test.ts` cobre parcelas com divisão exata, antecipação/atraso, crédito no cartão versus dinheiro, limites de reembolso, cancelamento 4 pagas/8 dispensadas, reservas, simulação sem mutação, aquisições, estoque sem novo pagamento, custo produtivo informado, investimentos, ferramentas, orçamentos e recorrências/exceções. Horas desconhecidas não criam ordenação intradiária; se todos os pagamentos do dia têm hora observada, o mínimo considera esses horários.
 
-Os testes Jest não substituem execução em aparelho. Os fluxos Maestro precisam ser executados em Android; SQLCipher, autenticação, backups, armazenamento, gestão de contas/reservas, orçamento, pagamentos, estornos, recorrências, cálculo de custo/margem de projetos e estoque permanecem sem implementação e sem cobertura neste shell. O indicador de gasto seguro é apenas demonstrativo, ligado a fixtures fixas; a navegação por mês passado só consulta lançamentos, pois a amostra não possui abertura histórica para simular recálculo retroativo. Esses critérios continuam como gates próprios das fases correspondentes do roadmap.
+`persistence.test.ts` verifica inicialização/migração inicial idempotente, fechamento/reabertura em arquivo temporário, FKs e centavos inteiros, rollback por erro SQL injetado no meio da gravação, conflitos de revisão e estado da aplicação preservado na falha. O gate recusa o SQLite comum antes de enviar chave ou criar tabelas. SQLite sem cifra é usado **somente no laboratório sintético**, nunca como fallback no app.
+
+`backup.test.ts` verifica recuperação com senha independente, vínculos/histórico, senha errada, adulteração/truncamento, versão/perfil KDF/purpose incompatíveis e validação de schema. O provedor é Node; não comprova o OpenSSL/Keystore no aparelho. `csv.test.ts` cobre fórmulas tratadas como texto, IDs fortes, vendas distintas de mesmo dia/valor, campos citados e recusa de referências inválidas/fluxos compostos.
+
+`movementStore.test.ts` conserva regressões do armazenamento legado em memória. A aplicação atual usa `FinanceStore`, com persistência síncrona transacional antes de publicar o novo estado. Revisões preservam antes/depois, previsão-base e idempotência.
+
+Também executar `npm run typecheck`, `npm run lint` e exportações Metro Android/web. A configuração Android gerada deve conter `expo.sqlite.useSQLCipher=true`; isso não equivale a testar o binário. Não há teste físico concluído de senha/biometria, mudança de biometria, interrupção, proteção visual ou recuperação em novo aparelho.
+
+A matriz de entrega, evidências e pendências obrigatórias está em [20 — Implementação dos registros locais](20-implementacao-registros-locais.md). A regra de custo foi ajustada à decisão do usuário: consumo só altera quantidade; custo produtivo é informado diretamente e não causa pagamento.
 
 ### Regressões das visões da planilha no shell
 

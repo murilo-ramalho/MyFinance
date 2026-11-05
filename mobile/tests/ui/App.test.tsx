@@ -339,7 +339,7 @@ describe('app movement journeys', () => {
     expect(rowIds()[0]).toBe('movement-row-demo-rent');
   });
 
-  test('browses past periods without inventing a historical opening balance and projects beyond next month', async () => {
+  test('propagates a retroactive expense without inventing a historical opening balance and projects beyond next month', async () => {
     await tap('tab-movements');
     await openNewMovementForm();
     await enter('Descrição', 'Despesa retroativa de teste');
@@ -347,6 +347,8 @@ describe('app movement journeys', () => {
     await enter('Data do fato', '12/09/2026');
     await enter('Data do pagamento/recebimento', '12/09/2026');
     await tap('movement-save-button');
+
+    expect(screen.getByTestId('movement-closing-balance-2026-10').props.children).toBe(formatBrl(471850));
 
     await tap('show-previous-month-button');
     expect(screen.getByTestId('selected-month-label').props.children).toBe('Setembro de 2026');
@@ -368,6 +370,75 @@ describe('app movement journeys', () => {
     await tap('show-following-month-button');
     expect(screen.getByTestId('selected-month-label').props.children).toBe('Janeiro de 2027');
     expect(screen.getByTestId('movement-row-test-2')).toBeTruthy();
-    expect(screen.getByTestId('movement-closing-balance-2027-01').props.children).toBe(formatBrl(661700));
+    expect(screen.getByTestId('movement-closing-balance-2027-01').props.children).toBe(formatBrl(658700));
+  });
+
+  test('rejects future effective payment dates and allows a pending forecast instead', async () => {
+    await tap('tab-movements');
+    await openNewMovementForm();
+    await enter('Descrição', 'Pagamento futuro');
+    await enter('Valor em reais', '10,00');
+    await enter('Data do pagamento/recebimento', '26/10/2026');
+    await tap('movement-save-button');
+    expect(screen.getByRole('alert').props.children).toBe('Pagamento futuro deve ficar como compromisso ou previsão.');
+    expect(screen.queryByTestId('movement-row-test-1')).toBeNull();
+    await tap('movement-option-previsão');
+    await tap('movement-save-button');
+    expect(screen.getByLabelText('Editar Pagamento futuro, Previsão')).toBeTruthy();
+    expect(screen.getByTestId('movement-closing-balance-2026-10').props.children).toBe(formatBrl(473850));
+  });
+
+  test('reconciles an existing forecast without keeping a second projected expense', async () => {
+    await tap('tab-movements');
+    await openMovement('movement-row-demo-groceries');
+    await tap('movement-option-realizado');
+    await enter('Valor em reais', '450,00');
+    await enter('Data do fato', '25/10/2026');
+    await enter('Data do pagamento/recebimento', '25/10/2026');
+    await tap('movement-save-button');
+    expect(screen.getAllByTestId('movement-row-demo-groceries')).toHaveLength(1);
+    expect(screen.getByLabelText('Editar Mercado · previsão, Realizado')).toBeTruthy();
+    expect(screen.getByTestId('movement-closing-balance-2026-10').props.children).toBe(formatBrl(471850));
+  });
+
+  test('retroactive edits update cash by medium and future projections exactly once', async () => {
+    await tap('tab-movements');
+    await openMovement('movement-row-demo-rent');
+    await enter('Valor em reais', '1700,00');
+    await enter('Data do pagamento/recebimento', '30/09/2026');
+    await tap('movement-save-button');
+    expect(screen.getByTestId('movement-closing-balance-2026-10').props.children).toBe(formatBrl(464850));
+    await tap('tab-home');
+    expect(screen.getByTestId('closing-balance-2026-11').props.children).toBe(formatBrl(643700));
+    expect(screen.getByTestId('safe-spend-amount').props.children).toBe(formatBrl(234850));
+    await tap('tab-views');
+    await tap('view-money');
+    expect(screen.getByText(formatBrl(523600))).toBeTruthy();
+  });
+
+  test('preserves an unknown economic event date when editing a dated cash expectation', async () => {
+    await tap('tab-movements');
+    await openNewMovementForm();
+    await enter('Descrição', 'Expectativa de caixa sem fato conhecido');
+    await enter('Valor em reais', '10,00');
+    await tap('movement-option-previsão');
+    await enter('Data prevista do evento', '');
+    await tap('movement-save-button');
+    await openMovement('movement-row-test-1');
+    expect(screen.getByLabelText('Data prevista do evento').props.value).toBe('');
+    expect(screen.getByLabelText('Data prevista para o caixa').props.value).toBe('25/10/2026');
+    await tap('movement-save-button');
+    expect(screen.getByTestId('movement-closing-balance-2026-10').props.children).toBe(formatBrl(473850));
+  });
+
+  test('changing payment state retains the known date of the economic fact', async () => {
+    await tap('tab-movements');
+    await openMovement('movement-row-demo-rent');
+    await tap('movement-option-compromisso');
+    await enter('Data prevista para o caixa', '27/10/2026');
+    await tap('movement-save-button');
+    await openMovement('movement-row-demo-rent');
+    expect(screen.getByLabelText('Data do fato').props.value).toBe('05/10/2026');
+    expect(screen.getByLabelText('Data prevista para o caixa').props.value).toBe('27/10/2026');
   });
 });

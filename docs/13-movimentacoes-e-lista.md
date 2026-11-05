@@ -1,4 +1,4 @@
-# 13 — Movimentações, datas e lista cronológica (v2)
+﻿# 13 — Movimentações, datas e lista cronológica (v2)
 
 ## Decisão de produto
 
@@ -45,8 +45,12 @@ As datas civis permanecem independentes do timezone de auditoria; o fuso configu
 
 Em 23/10/2026, ao abrir Movimentações pela primeira vez, o filtro é **outubro/2026**, todas as situações. Uma compra importada de 08/08/2026 sem hora aparece em agosto sem hora inventada. Uma despesa de novembro ainda não confirmada aparece como **prevista**, e não como gasto bancário já pago. Uma parcela vencida em 10/11 mas paga em 28/10 afeta caixa em outubro e mantém o vencimento original em seus detalhes.
 
-## Cobertura atual no shell de teste
+## Cobertura atual — 04/11/2026
 
-A interface em memória permite navegar mês a mês, buscar por descrição, filtrar por situação e por entrada/saída, alternar a ordem cronológica e restaurar os filtros padrão. Os resumos separam valores realizados, compromissos e previsões; a projeção mensal é exibida do mês atual para os meses seguintes. Meses anteriores exibem a lista, mas não um saldo: a fixture não possui abertura histórica suficiente para calcular esse valor com segurança.
+Movimentações permite navegar por mês, buscar, filtrar situação/tipo e alternar ordem cronológica. Início conserva mês atual + próximo. Meses passados com abertura conhecida mostram somente caixa efetivo; anteriores à base mostram a lista sem saldo inventado. Correções retroativas propagam pelos períodos seguintes. Vencimento original e data do fato ficam preservados quando a liquidação aparece pela data efetiva.
 
-O shell permite criar projetos com nome e descrição na aba **Visões > Projetos** e associá-los a entradas ou saídas pelo formulário de movimentação. Cada projeto mostra entradas, saídas e fluxo líquido acumulados, separando realizados, compromissos e previsões; o líquido projetado soma os três estados. Esses valores descrevem o caixa dos movimentos associados, não lucro ou margem produtiva. Em despesas, meio digital sem cartão é identificado como débito; um cartão selecionado é crédito; dinheiro físico fica separado. Os projetos e movimentos continuam apenas na memória. A associação organiza os mesmos lançamentos, sem criar outro fluxo de caixa. A aba **Visões** também filtra movimentos por cartão/projeto e separa os saldos fictícios digitais, físicos e o patrimônio de investimento. A reserva continua incluída no caixa que a contém e aparece como destinação. A compra de crédito da POC fica como obrigação com data de caixa prevista distinta; ainda não há fatura, parcelamento, passivo ou pagamento de cartão implementados. Investimento é um cartão ilustrativo estático, sem aporte/resgate. Custo produtivo, estoque e margem continuam pendentes.
+O mesmo formulário cria/edita lançamentos simples, sem sobrescrever campos carregados com defaults. Operações compostas abrem os detalhes de parcelas, pagamentos, reagendamento, correções e reembolsos vinculados. Essas ações registram o que o usuário informa, sem executar transações externas.
+
+Visões reúne cartão, projeto e tipos de dinheiro. Projeto organiza o mesmo fluxo, sem duplicá-lo. Organizar acrescenta faturas, contas/reservas, aquisições, séries, categorias/orçamentos, estoque, custos/resultados, investimentos, ferramentas, caixa diário e histórico. Fluxo de caixa e resultado produtivo são indicadores separados: o custo tido é informado pelo usuário e não cria outra saída bancária.
+
+Na demonstração, registros/histórico ficam na memória. No modo nativo de validação, `FinanceStore` grava pelo repositório SQLCipher em transação antes de publicar o estado. Navegador não oferece persistência financeira. A POC física e a revisão humana continuam pendentes; usar dados fictícios. Ver [20 — Implementação dos registros locais](20-implementacao-registros-locais.md).

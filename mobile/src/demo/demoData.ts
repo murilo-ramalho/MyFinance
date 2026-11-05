@@ -1,6 +1,7 @@
 import type { CivilDate, Movement, YearMonth } from '../domain/movements';
-import { daysInMonth } from '../domain/dates';
-import { monthAtOffset } from '../domain/movements';
+import { daysInMonth } from '../domain/dates.ts';
+import { monthAtOffset } from '../domain/movements.ts';
+import { emptyBook, type FinanceBook } from '../domain/book.ts';
 
 export const DEMO_OPENING_CASH_MINOR = { digital: 335_000, physical: 15_000 } as const;
 export const DEMO_OPENING_BALANCE_MINOR = DEMO_OPENING_CASH_MINOR.digital + DEMO_OPENING_CASH_MINOR.physical;
@@ -79,10 +80,10 @@ function planned(
   };
 }
 
-export function createDemoMovements(currentMonth: YearMonth): Movement[] {
+export function createDemoMovements(currentMonth: YearMonth, asOf: CivilDate): Movement[] {
   const nextMonth = monthAtOffset(currentMonth, 1);
 
-  return [
+  const movements: Movement[] = [
     realized('demo-salary', 'Salário de demonstração', 'income', 420_000, dateInMonth(currentMonth, 5)),
     realized('demo-rent', 'Moradia', 'expense', 160_000, dateInMonth(currentMonth, 5)),
     realized('demo-market', 'Mercado', 'expense', 48_500, dateInMonth(currentMonth, 9), { projectId: 'food' }),
@@ -105,4 +106,29 @@ export function createDemoMovements(currentMonth: YearMonth): Movement[] {
       dateInMonth(currentMonth, 28),
     ),
   ];
+  // A date arriving never confirms a payment. Future fixtures start pending.
+  return movements.map((movement) => movement.nature === 'realized' && movement.settledOn! > asOf
+    ? { ...movement, nature: 'commitment', settledOn: null, plannedSettlementOn: movement.settledOn,
+      occurredOn: null, expectedOn: movement.occurredOn }
+    : movement);
+}
+
+export function createDemoBook(month: YearMonth, today: CivilDate): FinanceBook {
+  const book = emptyBook(month);
+  book.accounts = [
+    { id: 'digital', name: 'Conta digital de teste', currency: 'BRL', kind: 'cash', moneyType: 'digital', openingOn: `${month}-01`, openingMinor: 335000, eligible: true },
+    { id: 'physical', name: 'Carteira de teste', currency: 'BRL', kind: 'cash', moneyType: 'physical', openingOn: `${month}-01`, openingMinor: 15000, eligible: true },
+    { id: 'investment', name: 'Saldo de investimento de teste', currency: 'BRL', kind: 'investment', moneyType: 'digital', openingOn: `${month}-01`, openingMinor: 125000, eligible: false },
+  ];
+  book.projects = DEMO_PROJECTS.map((entry) => ({ ...entry }));
+  book.cards = DEMO_CARDS.map((entry) => ({ ...entry }));
+  book.categories = [{ id: 'food', name: 'Alimentação' }, { id: 'housing', name: 'Moradia' }, { id: 'income', name: 'Renda' }];
+  book.movements = createDemoMovements(month, today).map((entry) => ({ ...entry,
+    accountId: entry.moneyType === 'physical' ? 'physical' : 'digital',
+    categoryId: entry.projectId === 'food' ? 'food' : entry.direction === 'income' ? 'income' : null,
+  }));
+  book.baselineMovements = book.movements.map((entry) => ({ ...entry }));
+  book.reserves = [{ id: 'emergency', name: 'Reserva de teste', accountId: 'digital', amountMinor: DEMO_PROTECTED_RESERVE_MINOR }];
+  book.cushionMinor = DEMO_SPENDING_CUSHION_MINOR;
+  return book;
 }

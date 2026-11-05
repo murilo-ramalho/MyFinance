@@ -35,7 +35,7 @@
 
 ## 2.4 Previsões, recorrências e revisões
 
-- **RN-030:** Recorrência por calendário: “dia 5 de cada mês”, com regra explícita se cair em fim de semana/feriado e caso o dia não exista (ex.: 31/fev).
+- **RN-030:** Recorrência por calendário: “dia 5 de cada mês”. Decisão do usuário: dias 29–31 inexistentes usam o último dia do mês, conservando o dia solicitado nos meses seguintes. Fins de semana/feriados não mudam a data automaticamente; ajuste é explícito.
 - **RN-031:** Recorrência por duração: “a cada 30 dias desde referência” não equivale a “todo dia 30”.
 - **RN-032:** Recorrência por execução: próxima ocorrência = data **real da última execução + intervalo**, e não a data originalmente prevista. Ex.: prevista 15/07, realizada 02/08, próximo ciclo semestral 02/02.
 - **RN-033:** Ciclo por uso (quilometragem, horas, quantidade) é opcional e deve depender de medição, não de calendário.
@@ -68,8 +68,8 @@ Saldo elegível inicial = R$ 3.500; saídas previstas/contratadas até próximo 
 - **RN-060:** Orçamento mensal (ex.: alimentação R$ 600) não é saída de caixa. Gasto efetivo de R$ 636 ⇒ `desvio = +R$36` e `desvio_% = 6%`.
 - **RN-061:** Previsão original, revisão de orçamento e realizado devem estar identificados separadamente para medir qualidade da previsão e seu impacto no fluxo futuro.
 - **RN-062:** Projeto/setor agrupa despesas e receitas; se um registro for distribuído entre projetos, soma dos percentuais/centavos alocados deve corresponder exatamente ao total. No shell de teste, projetos têm nome e descrição, podem ser associados a entradas ou saídas sem criar outro fluxo de caixa e exibem fluxo acumulado com realizado, compromisso e previsão separados. Esse fluxo não é margem nem custo produtivo.
-- **RN-063:** Item de estoque usa unidade de medida explícita (`kg`, `g`, `un`, `L`, `mL`, etc.), fator de conversão conhecido e precisão decimal; preço/kg = custo alocado dividido por kg comprado. Descontos/taxas precisam de método de alocação.
-- **RN-064:** Compra de 3 kg a R$ 105 ⇒ R$ 35/kg. Consumo de 200g ⇒ R$ 7 a custo da compra, antes de outros custos e perdas.
+- **RN-063:** Item de estoque usa unidade de medida explícita e quantidade decimal exata. Nesta implementação, o usuário registra tudo na unidade do item; conversões não são inferidas. Compra, consumo e perda preservam seus vínculos e datas.
+- **RN-064:** Decisão do usuário: o custo tido na produção é calculado fora do aplicativo e informado diretamente, com projeto, data e descrição; vínculo com venda é opcional. Não há custeio automático por média ou FIFO. Consumo de estoque e custo produtivo informado não criam novo pagamento. A compra de material registra a obrigação/saída financeira separadamente.
 - **RN-065:** Perda de estoque é movimento de estoque e possível perda econômica; **não** lançar nova saída de caixa se o item já foi pago.
 - **RN-066:** Investimentos guardam quantidade, ativo, custo, taxas, proventos efetivamente recebidos, proventos estimados por unidade **e periodicidade**. R$ 1 por ação só vira projeção após especificar pagamento e hipótese; nunca rendimento garantido.
 - **RN-067:** Separar aporte e retirada de ganho/perda; valorização de mercado de dinheiro recebido; pagamentos de dividendos podem afetar caixa sem serem confundidos com compra/venda de ativos.
@@ -117,3 +117,11 @@ Os identificadores **RN-080 a RN-100** estão definidos integralmente nos docume
 - `cancelar regra ≠ apagar passado`; `pular intenção ≠ perdoar dívida`; `adiar pagamento ≠ alterar vencimento original`.
 - Em qualquer mês `opening(n+1) = closing(n)` mesmo se `closing(n) < 0`.
 - Transações com mesmo dia/valor, mas identidades distintas, não são deduplicadas automaticamente.
+
+## Aplicação no shell — revisão de 04/11/2026
+
+RN-040/044: a abertura demonstrativa é uma base datada do livro. Correções anteriores à base afetam a abertura pela diferença entre registros atuais e os que já estavam representados nela. Os efeitos posteriores propagam pelos meses; saldo histórico sem abertura conhecida continua indisponível. Essa base não representa conciliação de extrato bancário.
+
+RN-002/003: pagamento efetivo posterior à data de referência é recusado pela aplicação; a interface orienta usar compromisso ou previsão. RN-042/045: pendências vencidas entram na projeção na data de referência sem mudar o registro original ou virar liquidações. RN-049: primeira insuficiência abaixo da reserva + margem é um resultado separado da data do menor saldo. RN-037/071: reconciliação e edição preservam revisões antes/depois no armazenamento em memória.
+
+O plano de aquisição sem data descrito nas novas especificações é entidade distinta, ainda pendente. Não se permite criar expectativa de caixa sem data para simular esse plano. Ver [revisão e lacunas](19-revisao-consistencia.md).

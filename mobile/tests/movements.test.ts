@@ -8,11 +8,46 @@ import {
   monthAtOffset,
   summarizeProjectFlow,
   summarizeMonth,
+  displayTimeOf,
   type CivilDate,
   type Movement,
   type MovementDirection,
   type MovementNature,
 } from '../src/domain/movements.ts';
+
+test('known payment minutes expose an intraday shortage, while missing times do not invent an order', () => {
+  const expense = { ...movement('expense', 'expense', 200, '2026-10-02', '2026-10-02'), settledTime: '09:00' };
+  const income = { ...movement('income', 'income', 200, '2026-10-02', '2026-10-02'), settledTime: '17:00' };
+  const known = summarizeMonth([income, expense], '2026-10', 100);
+  assert.equal(known.lowestBalanceMinor, -100);
+  assert.equal(known.lowestBalanceTime, '09:00');
+  const unknown = summarizeMonth([income, { ...expense, settledTime: null }], '2026-10', 100);
+  assert.equal(unknown.lowestBalanceMinor, 100); assert.equal(unknown.lowestBalanceTime, null);
+  const sameMinute = summarizeMonth([income, { ...expense, settledTime: '17:00' }], '2026-10', 100);
+  assert.equal(sameMinute.lowestBalanceMinor, 100);
+});
+
+test('civil times remain optional, sort by observed time and reject invalid or orphan times', () => {
+  const early = { ...movement('early', 'expense', 100, '2026-10-02', '2026-10-02'), occurredTime: '09:00' };
+  const late = { ...early, id: 'late', occurredTime: '18:30' };
+  const unknown = { ...early, id: 'unknown', occurredTime: null };
+  assert.deepEqual(listMovementsForMonth([early, unknown, late], '2026-10').map((entry) => entry.id), ['late', 'early', 'unknown']);
+  assert.equal(displayTimeOf(unknown), null);
+  assert.throws(() => summarizeMonth([{ ...early, occurredTime: '24:00' }], '2026-10', 0));
+  assert.throws(() => summarizeMonth([{ ...early, occurredOn: null }], '2026-10', 0));
+});
+
+test('rejects invalid currency, direction, state and undated cash expectations at the domain boundary', () => {
+  const valid = movement('valid', 'expense', 100, '2026-10-03', '2026-10-03');
+  for (const override of [
+    { currency: 'USD' }, { direction: 'transfer' }, { nature: 'unknown' },
+    { nature: 'forecast', settledOn: null, plannedSettlementOn: null },
+  ]) {
+    const invalid = { ...valid, ...override } as Movement;
+    assert.throws(() => summarizeMonth([invalid], '2026-10', 10000), TypeError);
+  }
+  assert.throws(() => summarizeMonth([], '2026-13', 0), RangeError);
+});
 
 function movement(
   id: string,

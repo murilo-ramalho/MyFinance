@@ -1,3 +1,9 @@
 import './dates.test.ts';
 import './money.test.ts';
 import './movements.test.ts';
+import './projections.test.ts';
+import './movementStore.test.ts';
+import './financeBook.test.ts';
+import './persistence.test.ts';
+import './backup.test.ts';
+import './csv.test.ts';

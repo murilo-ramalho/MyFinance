@@ -22,7 +22,7 @@
 3. **Autenticação biométrica do SO:** qual API permite recuperar uma DEK vinculada a autenticação criptográfica com o Expo atual? Se `SecureStore` não cobrir o fluxo inteiro, criar pequena integração nativa revisada; não fingir segurança.
 4. **Definição de gasto seguro:** escolher horizonte inicial (até próximo salário) e margem prudencial padrão (sugestão: configurável; **não** escolher valor silenciosamente).
 5. **Fontes de preço/mercado:** no MVP, cadastro manual; atualização remota exigiria outro escopo e política de privacidade.
-6. **Regra de calendário em fim de mês, fins de semana e feriados:** UI deve exigir política clara ou oferecer padrão exposto, sem supor norma bancária universal.
+6. **Fins de semana e feriados:** sem ajuste bancário automático. Dias 29–31 foram decididos pelo usuário: usar o último dia do mês quando necessário.
 7. **Passivos e cartão:** escolher representação de saldo e pagamento que preserve equivalência contábil sem inflar despesas; validar com testes.
 8. **Valor unitário e medida de produto:** separar quantidade comprada, consumida e rendimento líquido quando aplicável.
 9. **Exportação em iOS e Android:** validar sandbox, sharing e exclusão de temporários após cancelamentos.
@@ -40,4 +40,14 @@ Não converter pontos abertos em regras implícitas apenas porque uma IA sugeriu
 - **ADR-017 | Planilha como referência:** formulas/conceitos inspiram motores e casos de teste, não o layout; valores amostrais não são dados reais importados automaticamente; LETREIRO e ZOKI são operações distintas.
 - **ADR-018 | No hidden time:** hora desconhecida é `NULL`; timezone de planejamento define «hoje», não a origem do timestamp de auditoria.
 
-**Pontos a detalhar antes de implementar:** política de dia 29–31; tratamento de férias/feriados em salários; regras de exigibilidade/renegociação de contratos concretos; estratégia de preço médio e taxas em investimentos; política de backups temporários e configuração de bloqueio automático. Esses pontos não impedem entrega de tela/lista e regra básica mensal.
+**Pontos ainda dependentes de validação:** tratamento de férias/feriados em salários, exigibilidade/renegociação de contratos concretos, provedor nativo de criptografia, temporários de compartilhamento e bloqueio em aparelho. Não há interpretação jurídica ou integração bancária automática.
+
+## Decisões do usuário e implementação local — 04/11/2026
+
+- **ADR-019 | Registros manuais:** pagamentos, faturas e reembolsos representam o que o usuário informa. O app não acessa bancos, movimenta dinheiro nem cancela contratos externos.
+- **ADR-020 | Custo produtivo informado:** o usuário calcula e informa o custo tido. Estoque controla quantidades e não escolhe média/FIFO, nem gera pagamento ao consumir material.
+- **ADR-021 | Mês curto:** dias 29–31 usam o último dia do mês quando inexistentes e retomam o dia original depois. Não deslocar por feriado/fim de semana silenciosamente.
+- **ADR-022 | Persistência para validação:** repositório SQLCipher e envelope AES-256-GCM/scrypt nativos implementados atrás de sessão protegida. Desenho, perfil de KDF, dependências nativas e migração inicial continuam sujeitos a revisão humana e POC física. Isso não aprova uso de dados reais. Demonstração web fica somente em memória.
+- Horizonte configurável até próxima receita ou 30/90 dias; margem informada explicitamente. Valorização e custo baixado de investimentos são informados, sem preços externos.
+
+Evidências e limites: [20 — Implementação dos registros locais](20-implementacao-registros-locais.md).

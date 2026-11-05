@@ -27,7 +27,7 @@
 
 ### Calendário, fuso e dias inexistentes
 
-Definir fuso local da série e comportamento explícito para dia 29–31 em mês curto (`último dia válido`, `pular mês`, `primeiro dia do mês seguinte`) e para finais de semana/feriados se desejado. A opção selecionada é persistida; não adivinhar feriados sem calendário definido. `UNTIL`, `COUNT` e `EXDATE` da RFC 5545 servem como referência, **não** para lógica de conclusão ou pagamento.
+Definir fuso de planejamento e comportamento explícito para mês curto. Decisão do usuário em 04/11/2026: dias 29–31 inexistentes usam o **último dia válido**, retomando o dia original nos meses seguintes. A política é persistida na regra. Não deslocar por finais de semana/feriados sem ajuste explícito. `UNTIL`, `COUNT` e `EXDATE` da RFC 5545 servem como referência, **não** para lógica de conclusão ou pagamento.
 
 ## Escolha de alcance (escopo) por ação
 
