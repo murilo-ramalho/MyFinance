@@ -51,8 +51,11 @@ function openSession(material: Material): VaultSession {
     lock: () => { if (live) { live = false; try { repository.close(); } finally { key.fill(0); } } },
     enableBiometrics: async () => {
       assertLive();
+      if (!SecureStore.canUseBiometricAuthentication()) {
+        throw new Error('Configure uma biometria no aparelho para ativar o desbloqueio.');
+      }
       await SecureStore.setItemAsync(BIOMETRIC, JSON.stringify({ key: toHex(key), username, openingMonth }),
-        { ...STORE_OPTIONS, requireAuthentication: true, authenticationPrompt: 'Proteger a chave com biometria' });
+        { ...STORE_OPTIONS, requireAuthentication: true, authenticationPrompt: 'Confirmar biometria para ativar o desbloqueio' });
       assertLive();
     },
     changePassword: async (current, next) => {

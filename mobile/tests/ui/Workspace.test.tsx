@@ -10,21 +10,36 @@ async function tap(id: string) { await fireEvent.press(screen.getByTestId(id)); 
 async function action(label: string) { await fireEvent.press(screen.getByLabelText(label)); }
 async function enter(label: string, value: string) { await fireEvent.changeText(screen.getByLabelText(label), value); }
 async function save() { await tap('record-editor-save'); }
+async function choosePanel(panel: string) { await tap('workspace-panel-picker'); await tap(`workspace-${panel}`); }
 
 describe('manual financial record journeys', () => {
-  beforeEach(async () => { await render(<App />); });
+  beforeEach(async () => { await render(<App store={new FinanceStore(createDemoBook('2026-10', '2026-10-25'))} />); });
+
+  test('tools empty state explains what the register does and section names fit in a picker', async () => {
+    await tap('tab-workspace'); await choosePanel('tools');
+    expect(screen.getByTestId('workspace-tools-empty')).toBeTruthy();
+    expect(screen.getByText('Acompanhe o custo por uso')).toBeTruthy();
+    expect(screen.getByText(/O cadastro não gera outro pagamento/)).toBeTruthy();
+    expect(screen.getByLabelText('Seção atual: Ferramentas. Abrir seções.')).toBeTruthy();
+
+    await tap('workspace-panel-picker');
+    expect(screen.getByText('Escolha uma seção')).toBeTruthy();
+    expect(screen.getByTestId('workspace-files')).toBeTruthy();
+    expect(screen.getByText('Importar e exportar')).toBeTruthy();
+    await tap('workspace-panel-picker-close');
+  });
 
   test('an undated acquisition preserves balances and converts into a single linked commitment', async () => {
-    await tap('tab-workspace'); await tap('workspace-plans'); await tap('workspace-new-plan');
+    await tap('tab-workspace'); await choosePanel('plans'); await tap('workspace-new-plan');
     await enter('Compra desejada', 'Peça em promoção'); await enter('Preço estimado, opcional', '200,00'); await save();
     await tap('tab-home');
     expect(screen.getByTestId('closing-balance-2026-10').props.children).toBe(formatBrl(474850));
-    await tap('tab-workspace'); await tap('workspace-plans'); await action('Converter Peça em promoção em registro');
+    await tap('tab-workspace'); await choosePanel('plans'); await action('Converter Peça em promoção em registro');
     await enter('Valor total em reais', '180,00'); await save();
     expect(screen.getByTestId('operation-details')).toBeTruthy();
     await tap('operation-details-close'); await tap('tab-home');
     expect(screen.getByTestId('closing-balance-2026-10').props.children).toBe(formatBrl(456850));
-    await tap('tab-workspace'); await tap('workspace-plans');
+    await tap('tab-workspace'); await choosePanel('plans');
     expect(screen.getByText('Convertida em registro')).toBeTruthy();
     expect(screen.queryByLabelText('Converter Peça em promoção em registro')).toBeNull();
   });
@@ -56,7 +71,7 @@ describe('manual financial record journeys', () => {
   });
 
   test('manual production cost affects the project result and never creates a new payment', async () => {
-    await tap('tab-workspace'); await tap('workspace-production'); await tap('workspace-production-cost');
+    await tap('tab-workspace'); await choosePanel('production'); await tap('workspace-production-cost');
     await enter('Descrição do custo', 'Custo tido na peça'); await action('Projeto: Impressora 3D');
     await enter('Custo total tido', '84,87'); await save();
     expect(screen.getByText(`Custos informados ${formatBrl(8487)}`)).toBeTruthy();
@@ -71,7 +86,7 @@ describe('manual financial record journeys', () => {
   });
 
   test('internal transfers conserve the home balance while changing the recorded locations', async () => {
-    await tap('tab-workspace'); await tap('workspace-accounts'); await action('Registrar transferência');
+    await tap('tab-workspace'); await choosePanel('accounts'); await action('Registrar transferência');
     await action('Conta de origem: Conta digital de teste'); await action('Conta de destino: Carteira de teste');
     await enter('Valor da transferência', '300,00'); await save();
     await tap('tab-home');
@@ -82,13 +97,13 @@ describe('manual financial record journeys', () => {
   });
 
   test('monthly recurrence appears in projections and skipping one date preserves the other cycles', async () => {
-    await tap('tab-workspace'); await tap('workspace-series'); await action('Nova recorrência');
+    await tap('tab-workspace'); await choosePanel('series'); await action('Nova recorrência');
     await enter('Nome da série', 'Compra mensal opcional'); await enter('Valor por ocorrência', '100,00');
     await enter('Data inicial', '02/11/2026'); await enter('Data final, opcional', '31/01/2027'); await save();
     await action('Cancelar a partir de 02/12/2026'); await save();
     await tap('tab-home');
     expect(screen.getByTestId('closing-balance-2026-11').props.children).toBe(formatBrl(643700));
-    await tap('tab-workspace'); await tap('workspace-series');
+    await tap('tab-workspace'); await choosePanel('series');
     expect(screen.getByLabelText('Abrir ocorrência 02/11/2026')).toBeTruthy();
     expect(screen.queryByLabelText('Abrir ocorrência 02/12/2026')).toBeNull();
   });
@@ -97,7 +112,7 @@ describe('manual financial record journeys', () => {
     await tap('tab-movements'); await tap('show-next-month-button'); await tap('movement-row-demo-next-salary');
     await fireEvent(screen.getByTestId('movement-form-modal'), 'show'); await tap('movement-option-despesa'); await tap('movement-save-button');
     await tap('tab-home'); expect(screen.getByTestId('safe-spend-unavailable')).toBeTruthy();
-    await tap('tab-workspace'); await tap('workspace-accounts'); await action('Configurar horizonte e fuso');
+    await tap('tab-workspace'); await choosePanel('accounts'); await action('Configurar horizonte e fuso');
     await action('Horizonte do disponível: Próximos 30 dias'); await save(); await tap('tab-home');
     expect(screen.getByTestId('safe-spend-amount')).toBeTruthy();
     expect(screen.getByText('Até 24/11/2026')).toBeTruthy();
@@ -112,7 +127,7 @@ describe('manual financial record journeys', () => {
     await enter('Hora do fato, opcional', '14:35'); await enter('Hora do pagamento, opcional', '15:10'); await tap('movement-save-button');
     expect(screen.getByText('Realizado · 25/10/2026 14:35')).toBeTruthy();
     expect(screen.getByText('Caixa efetivo: 25/10/2026 15:10')).toBeTruthy();
-    await tap('movement-row-test-1'); await fireEvent(screen.getByTestId('movement-form-modal'), 'show');
+    await tap('movement-row-movement-1'); await fireEvent(screen.getByTestId('movement-form-modal'), 'show');
     expect(screen.getByLabelText('Hora do fato, opcional').props.value).toBe('14:35');
     expect(screen.getByLabelText('Hora do pagamento, opcional').props.value).toBe('15:10');
   });

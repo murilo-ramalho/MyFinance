@@ -1,6 +1,9 @@
 import { fireEvent, render, screen, within } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 
 import App from '../../App';
+import { FinanceStore } from '../../src/application/financeStore';
+import { createDemoBook } from '../../src/demo/demoData';
 import { formatBrl } from '../../src/domain/money';
 
 jest.mock('../../src/platform/deviceDate', () => ({
@@ -9,7 +12,8 @@ jest.mock('../../src/platform/deviceDate', () => ({
 
 describe('app movement journeys', () => {
   beforeEach(async () => {
-    await render(<App />);
+    const store = new FinanceStore(createDemoBook('2026-10', '2026-10-25'));
+    await render(<App store={store} />);
   });
 
   async function tap(testID: string): Promise<void> {
@@ -31,16 +35,40 @@ describe('app movement journeys', () => {
     await fireEvent(screen.getByTestId('movement-form-modal'), 'show');
   }
 
-  test('shows the demo warning and current plus following month on home', () => {
+  test('shows the current and following month without demo content', () => {
     expect(screen.getByText('myFinance')).toBeTruthy();
-    expect(screen.getByText('TESTE · dados fictícios, só na memória')).toBeTruthy();
-    expect(screen.getByText('Mês atual · inclui previsões')).toBeTruthy();
-    expect(screen.getByText('Próximo mês · projeção')).toBeTruthy();
+    expect(screen.queryByText('DEMONSTRAÇÃO · dados temporários')).toBeNull();
+    expect(screen.getByText('Resumo')).toBeTruthy();
+    const currentMonthCard = within(screen.getByTestId('month-summary-2026-10'));
+    const nextMonthCard = within(screen.getByTestId('month-summary-2026-11'));
+    expect(currentMonthCard.getByText('Saldo mês anterior')).toBeTruthy();
+    expect(currentMonthCard.queryByText('Menor saldo diário')).toBeNull();
+    expect(screen.getByText('Próximo mês')).toBeTruthy();
+    expect(screen.getByText('Novembro de 2026')).toBeTruthy();
+    expect(nextMonthCard.queryByText('Menor saldo diário')).toBeNull();
+    expect(nextMonthCard.getByText('Saldo próximo mês')).toBeTruthy();
+    for (const month of ['2026-10', '2026-11']) {
+      for (const [flow, borderColor] of [['inflow', '#23834D'], ['outflow', '#D82C39']]) {
+        for (const nature of ['realized', 'committed', 'forecast']) {
+          expect(screen.getByTestId(`${nature}-${flow}-${month}`)).toBeTruthy();
+        }
+        const flowCard = screen.getByTestId(`flow-card-${flow}-${month}`);
+        expect(StyleSheet.flatten(flowCard.props.style).borderColor).toBe(borderColor);
+        expect(StyleSheet.flatten(flowCard.props.style).backgroundColor).toBe('#FFFFFF');
+        expect(StyleSheet.flatten(screen.getByTestId(`flow-total-${flow}-${month}`).props.style).color).toBe('#1B2335');
+      }
+    }
+    expect(StyleSheet.flatten(screen.getByTestId('month-summary-2026-10').props.style).backgroundColor).toBe('#FFFFFF');
+    expect(StyleSheet.flatten(screen.getByTestId('month-summary-2026-11').props.style).backgroundColor).toBe('#FFFFFF');
     expect(screen.getByTestId('closing-balance-2026-10').props.children).toBe(formatBrl(474850));
     expect(screen.getByTestId('closing-balance-2026-11').props.children).toBe(formatBrl(653700));
-    expect(screen.getByTestId('realized-inflow-2026-10').props.children).toEqual(['Realizadas ', formatBrl(420000)]);
-    expect(screen.getByTestId('committed-outflow-2026-10').props.children).toEqual(['Compromissos ', formatBrl(23000)]);
-    expect(screen.getByTestId('forecast-outflow-2026-10').props.children).toEqual(['Previsões ', formatBrl(42000)]);
+    expect(screen.getByTestId('annual-income-projection').props.children).toBe(formatBrl(840000));
+    expect(screen.getByTestId('realized-inflow-2026-10').props.children).toBe(formatBrl(420000));
+    expect(screen.getByTestId('realized-inflow-2026-10').props.accessibilityLabel).toBe(`Realizadas ${formatBrl(420000)}`);
+    expect(screen.getByTestId('committed-outflow-2026-10').props.children).toBe(formatBrl(23000));
+    expect(screen.getByTestId('committed-outflow-2026-10').props.accessibilityLabel).toBe(`Compromissos ${formatBrl(23000)}`);
+    expect(screen.getByTestId('forecast-outflow-2026-10').props.children).toBe(formatBrl(42000));
+    expect(screen.getByTestId('forecast-outflow-2026-10').props.accessibilityLabel).toBe(`Previsões ${formatBrl(42000)}`);
   });
 
   test('starts manual entry with the spreadsheet fields visible and summarizes optional details', async () => {
@@ -104,7 +132,7 @@ describe('app movement journeys', () => {
     await tap('movement-project-printer-3d');
     await tap('movement-save-button');
 
-    expect(screen.getByTestId('movement-row-test-1')).toBeTruthy();
+    expect(screen.getByTestId('movement-row-movement-1')).toBeTruthy();
     expect(screen.getByText('Físico · Projeto: Impressora 3D')).toBeTruthy();
     expect(screen.getByTestId('movement-closing-balance-2026-10').props.children).toBe(formatBrl(473850));
   });
@@ -123,8 +151,8 @@ describe('app movement journeys', () => {
     await enter('Descrição do projeto', 'Serviços de design');
     await tap('save-project-button');
 
-    expect(screen.getByTestId('project-card-test-project-1')).toBeTruthy();
-    expect(screen.getByTestId('project-description-test-project-1').props.children).toBe('Serviços de design');
+    expect(screen.getByTestId('project-card-project-1')).toBeTruthy();
+    expect(screen.getByTestId('project-description-project-1').props.children).toBe('Serviços de design');
 
     await tap('create-project-button');
     await fireEvent(screen.getByTestId('project-form-modal'), 'show');
@@ -139,22 +167,22 @@ describe('app movement journeys', () => {
     await enter('Descrição', 'Recebimento do freela');
     await enter('Valor em reais', '500,00');
     await tap('movement-option-entrada');
-    await tap('movement-project-test-project-1');
+    await tap('movement-project-project-1');
     await tap('movement-save-button');
-    const incomeRow = screen.getByTestId('movement-row-test-1');
+    const incomeRow = screen.getByTestId('movement-row-movement-1');
     expect(within(incomeRow).getByText('Digital · Projeto: Freela')).toBeTruthy();
 
     await openNewMovementForm();
     await enter('Descrição', 'Material do freela');
     await enter('Valor em reais', '30,00');
-    await tap('movement-project-test-project-1');
+    await tap('movement-project-project-1');
     await tap('movement-save-button');
-    const expenseRow = screen.getByTestId('movement-row-test-2');
+    const expenseRow = screen.getByTestId('movement-row-movement-2');
     expect(within(expenseRow).getByText('Débito · Projeto: Freela')).toBeTruthy();
     await tap('tab-views');
     await tap('view-projects');
-    expect(screen.getByTestId('project-flow-net-realized-test-project-1').props.children).toBe(formatBrl(47000));
-    expect(screen.getByTestId('project-flow-net-projected-test-project-1').props.children).toBe(formatBrl(47000));
+    expect(screen.getByTestId('project-flow-net-realized-project-1').props.children).toBe(formatBrl(47000));
+    expect(screen.getByTestId('project-flow-net-projected-project-1').props.children).toBe(formatBrl(47000));
   });
 
   test('keeps a card purchase date separate from its projected cash date', async () => {
@@ -172,9 +200,9 @@ describe('app movement journeys', () => {
     await tap('movement-save-button');
 
     await tap('tab-views');
-    expect(screen.getByTestId('movement-row-test-1')).toBeTruthy();
+    expect(screen.getByTestId('movement-row-movement-1')).toBeTruthy();
     expect(screen.getByText('Caixa previsto: 15/11/2026')).toBeTruthy();
-    expect(within(screen.getByTestId('movement-row-test-1')).getByText('Crédito · Cartão de demonstração')).toBeTruthy();
+    expect(within(screen.getByTestId('movement-row-movement-1')).getByText('Crédito · Cartão de demonstração')).toBeTruthy();
   });
 
   test('distinguishes cardless digital debit from credit card and physical cash', async () => {
@@ -265,7 +293,7 @@ describe('app movement journeys', () => {
     await enter('Valor em reais', '25,90');
     await tap('movement-save-button');
 
-    expect(screen.getByTestId('movement-row-test-1')).toBeTruthy();
+    expect(screen.getByTestId('movement-row-movement-1')).toBeTruthy();
     expect(screen.getByLabelText('Editar Compra de teste, Realizado')).toBeTruthy();
     expect(screen.getByTestId('movement-closing-balance-2026-10').props.children).toBe(formatBrl(472260));
   });
@@ -288,7 +316,7 @@ describe('app movement journeys', () => {
     await tap('movement-save-button');
 
     expect(screen.getByRole('alert').props.children).toBe('Informe uma descrição.');
-    expect(screen.queryByTestId('movement-row-test-1')).toBeNull();
+    expect(screen.queryByTestId('movement-row-movement-1')).toBeNull();
 
     await enter('Descrição', 'Data inválida');
     await enter('Valor em reais', '10,999');
@@ -300,7 +328,7 @@ describe('app movement journeys', () => {
     await tap('movement-save-button');
 
     expect(screen.getByRole('alert').props.children).toBe('Confira as datas no formato DD/MM/AAAA.');
-    expect(screen.queryByTestId('movement-row-test-1')).toBeNull();
+    expect(screen.queryByTestId('movement-row-movement-1')).toBeNull();
   });
 
   test('loads saved values when editing and uses today only for a new form', async () => {
@@ -384,7 +412,7 @@ describe('app movement journeys', () => {
 
     await tap('show-previous-month-button');
     expect(screen.getByTestId('selected-month-label').props.children).toBe('Setembro de 2026');
-    expect(screen.getByTestId('movement-row-test-1')).toBeTruthy();
+    expect(screen.getByTestId('movement-row-movement-1')).toBeTruthy();
     expect(screen.getByTestId('historical-balance-unavailable')).toBeTruthy();
 
     await tap('show-current-month-button');
@@ -401,7 +429,7 @@ describe('app movement journeys', () => {
     await tap('show-following-month-button');
     await tap('show-following-month-button');
     expect(screen.getByTestId('selected-month-label').props.children).toBe('Janeiro de 2027');
-    expect(screen.getByTestId('movement-row-test-2')).toBeTruthy();
+    expect(screen.getByTestId('movement-row-movement-2')).toBeTruthy();
     expect(screen.getByTestId('movement-closing-balance-2027-01').props.children).toBe(formatBrl(658700));
   });
 
@@ -413,7 +441,7 @@ describe('app movement journeys', () => {
     await enter('Data do pagamento/recebimento', '26/10/2026');
     await tap('movement-save-button');
     expect(screen.getByRole('alert').props.children).toBe('Pagamento futuro deve ficar como compromisso ou previsão.');
-    expect(screen.queryByTestId('movement-row-test-1')).toBeNull();
+    expect(screen.queryByTestId('movement-row-movement-1')).toBeNull();
     await tap('movement-option-previsão');
     await tap('movement-save-button');
     expect(screen.getByLabelText('Editar Pagamento futuro, Previsão')).toBeTruthy();
@@ -456,7 +484,7 @@ describe('app movement journeys', () => {
     await tap('movement-option-previsão');
     await enter('Data prevista do evento', '');
     await tap('movement-save-button');
-    await openMovement('movement-row-test-1');
+    await openMovement('movement-row-movement-1');
     expect(screen.getByLabelText('Data prevista do evento').props.value).toBe('');
     expect(screen.getByLabelText('Data prevista para o caixa').props.value).toBe('25/10/2026');
     await tap('movement-save-button');

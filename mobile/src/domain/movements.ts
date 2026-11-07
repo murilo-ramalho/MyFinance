@@ -355,6 +355,45 @@ export function listMovementsForMonth(
     });
 }
 
+/** Projects external cash income received this year plus its commitments and forecasts through December. */
+export function projectAnnualIncome(
+  movements: readonly Movement[],
+  year: number,
+  asOf: CivilDate,
+): number {
+  validateCivilDate(asOf, 'asOf');
+  if (!Number.isInteger(year) || year < 1 || year > 9999) {
+    throw new RangeError('Expected a valid calendar year.');
+  }
+
+  const yearPrefix = `${String(year).padStart(4, '0')}-`;
+  if (!asOf.startsWith(yearPrefix)) {
+    throw new RangeError('Annual income projection must use the as-of calendar year.');
+  }
+
+  const firstDay = `${yearPrefix}01-01` as CivilDate;
+  const lastDay = `${yearPrefix}12-31` as CivilDate;
+  let total = 0n;
+
+  for (const movement of movements) {
+    validateMovement(movement);
+    if (
+      movement.direction !== 'income'
+      || (movement.flowKind !== undefined && movement.flowKind !== 'external')
+    ) continue;
+
+    const cashDate = cashDateOf(movement);
+    if (cashDate === null || (movement.nature === 'realized' && cashDate > asOf)) continue;
+    const projectedDate = movement.nature !== 'realized' && cashDate < asOf ? asOf : cashDate;
+    if (projectedDate < firstDay || projectedDate > lastDay) continue;
+    total += BigInt(movement.amountMinor);
+  }
+
+  const result = Number(total);
+  if (!Number.isSafeInteger(result)) throw new RangeError('Annual income exceeds safe integer centavos.');
+  return result;
+}
+
 export function summarizeMonth(
   movements: readonly Movement[],
   month: YearMonth,

@@ -54,3 +54,7 @@ O mesmo formulário cria/edita lançamentos simples, sem sobrescrever campos car
 Visões reúne cartão, projeto e tipos de dinheiro. Projeto organiza o mesmo fluxo, sem duplicá-lo. Organizar acrescenta faturas, contas/reservas, aquisições, séries, categorias/orçamentos, estoque, custos/resultados, investimentos, ferramentas, caixa diário e histórico. Fluxo de caixa e resultado produtivo são indicadores separados: o custo tido é informado pelo usuário e não cria outra saída bancária.
 
 Na demonstração, registros/histórico ficam na memória. No modo nativo de validação, `FinanceStore` grava pelo repositório SQLCipher em transação antes de publicar o estado. Navegador não oferece persistência financeira. A POC física e a revisão humana continuam pendentes; usar dados fictícios. Ver [20 — Implementação dos registros locais](20-implementacao-registros-locais.md).
+
+## Tela inicial simplificada
+
+O Início apresenta primeiro o resumo do mês atual e, em seguida, o próximo mês. O resumo atual mostra saldo herdado, receita e despesa, cada uma dividida em realizadas, compromissos e previsões, e o fechamento; o fechamento atual já representa a abertura do mês seguinte. O menor saldo diário permanece disponível na tela Movimentações. A faixa anual identifica explicitamente a projeção e mantém o disponível seguro como indicador separado.

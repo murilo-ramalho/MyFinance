@@ -6,6 +6,7 @@ import {
   estimateSafeToSpend,
   listMovementsForMonth,
   monthAtOffset,
+  projectAnnualIncome,
   summarizeProjectFlow,
   summarizeMonth,
   displayTimeOf,
@@ -14,6 +15,30 @@ import {
   type MovementDirection,
   type MovementNature,
 } from '../src/domain/movements.ts';
+
+test('projects annual external income from receipts, commitments and forecasts through December', () => {
+  const annualIncome = projectAnnualIncome([
+    movement('received-in-january', 'income', 10000, '2026-01-15', '2026-01-15'),
+    movement('overdue-commitment', 'income', 2500, '2026-10-30', '2026-10-30', 'commitment'),
+    movement('forecast-in-december', 'income', 4000, '2026-12-30', '2026-12-30', 'forecast'),
+    movement('forecast-next-year', 'income', 7000, '2027-01-02', '2027-01-02', 'forecast'),
+    { ...movement('future-realized', 'income', 5000, '2026-12-10', '2026-12-10'), settledOn: '2026-12-10' },
+    { ...movement('refund', 'income', 3000, '2026-11-05', '2026-11-05'), flowKind: 'refund' },
+    { ...movement('transfer', 'income', 2000, '2026-11-05', '2026-11-05'), flowKind: 'transfer' },
+    { ...movement('investment', 'income', 1500, '2026-11-05', '2026-11-05'), flowKind: 'investment' },
+  ], 2026, '2026-11-06');
+
+  assert.equal(annualIncome, 16500);
+});
+
+test('annual income projection preserves centavos and rejects invalid year ranges', () => {
+  assert.throws(() => projectAnnualIncome([
+    movement('first-cent', 'income', Number.MAX_SAFE_INTEGER, '2026-01-01', '2026-01-01'),
+    movement('overflow-cent', 'income', 1, '2026-01-02', '2026-01-02'),
+  ], 2026, '2026-11-06'), RangeError);
+  assert.throws(() => projectAnnualIncome([], 2025, '2026-11-06'), RangeError);
+  assert.throws(() => projectAnnualIncome([], 10000, '2026-11-06'), RangeError);
+});
 
 test('known payment minutes expose an intraday shortage, while missing times do not invent an order', () => {
   const expense = { ...movement('expense', 'expense', 200, '2026-10-02', '2026-10-02'), settledTime: '09:00' };

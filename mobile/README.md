@@ -2,14 +2,17 @@
 
 Aplicativo de registros financeiros manuais, offline e sem backend ou integração bancária. Início mostra o mês atual e o próximo; Movimentações abre no mês atual. A aba Organizar reúne as operações e cadastros descritos em [docs/20](../docs/20-implementacao-registros-locais.md).
 
-## Modos de execução
+## Registros locais
 
-- **Demonstração:** dados fictícios em memória, isolados do perfil protegido; disponíveis no navegador e por escolha explícita no Android. Fechar/recarregar descarta mudanças.
-- **Registros locais protegidos:** build nativo próprio com SQLCipher, senha, biometria opcional e backup cifrado. Não funciona no Expo Go nem usa SQLite sem cifra como alternativa. O aplicativo bloqueia a sessão ao sair do primeiro plano.
+O aplicativo não inicia com movimentos, contas ou categorias de exemplo. Ao criar um perfil, informe uma conta real, o tipo e o saldo de abertura na data-base indicada. O livro começa sem movimentos e categorias; os dados sintéticos existem apenas em verificações isoladas.
+
+Os registros ficam em um cofre local protegido em build nativo próprio com SQLCipher, senha, biometria opcional e backup cifrado. Não funciona no Expo Go nem usa SQLite sem cifra como alternativa. O aplicativo bloqueia a sessão ao sair do primeiro plano.
+
+Na criação do perfil, é possível ativar o desbloqueio biométrico do Android. O sistema pede a confirmação; se a biometria for cancelada ou não estiver disponível, o perfil é criado e a senha local continua valendo. A chave biométrica é protegida pelo SecureStore com autenticação nativa.
 
 O modo nativo é uma implementação para validação. **Não inserir dados reais até concluir a POC em aparelho e a revisão humana obrigatória.** Os testes Node/Jest e a exportação Metro não certificam o armazenamento nativo.
 
-## Executar a demonstração
+## Executar o aplicativo
 
 Requer Node.js 22.13 ou mais recente e npm compatível com o lockfile.
 
@@ -17,6 +20,8 @@ Requer Node.js 22.13 ou mais recente e npm compatível com o lockfile.
 npm ci --ignore-scripts
 npm run web
 ```
+
+O navegador não abre nem cria perfis protegidos. Para usar os registros locais, instale o build nativo e crie ou desbloqueie o cofre.
 
 No Android, dependências nativas exigem development build próprio. Expo Go não executa o modo protegido. Com JDK, Android SDK e aparelho/emulador configurados:
 
@@ -37,11 +42,11 @@ npm run bundle:android
 npm run bundle:web
 ```
 
-São 97 testes Node de domínio/aplicação/persistência/backup/CSV e 38 testes de interface (135 no total). A suíte usa SQLite real apenas com dados sintéticos para testar schema, FKs e transações; a criptografia de testes usa o provedor Node, e a interface simula os serviços nativos. Nenhum desses testes substitui a prova do provedor nativo.
+São 99 testes Node de domínio/aplicação/persistência/backup/CSV e 42 testes de interface (141 no total). A suíte usa SQLite real apenas com dados sintéticos para testar schema, FKs e transações; a criptografia de testes usa o provedor Node, e a interface simula os serviços nativos. Nenhum desses testes substitui a prova do provedor nativo.
 
-Os fluxos `.maestro/` incluem a escolha explícita de demonstração e a prova nativa com bancos sintéticos isolados. `npm run test:e2e` exige Maestro, SDK e APK instalado; **não executado neste ambiente**. Não executar fluxos com `clearState` sobre perfil com dados que se deseja conservar.
+O fluxo `.maestro/native-security-proof.yaml` verifica o armazenamento com bancos sintéticos isolados em build de desenvolvimento. `npm run test:e2e` exige Maestro, SDK e APK instalado; **não executado neste ambiente**. Não executar esse fluxo em um perfil com dados que se deseja conservar.
 
-Na entrada do app, **Executar validação nativa com dados fictícios** testa SQLCipher, recusa sem chave/com chave errada, reabertura, restauração com outra chave e adulteração do backup. Biometria, interrupções, seletor de apps, compartilhamento e recuperação em outro aparelho exigem verificação manual adicional.
+Em build de desenvolvimento, **Verificar proteção do aparelho** testa SQLCipher, recusa sem chave/com chave errada, reabertura, restauração com outra chave e adulteração do backup. Biometria, interrupções, seletor de apps, compartilhamento e recuperação em outro aparelho exigem verificação manual adicional.
 
 ## Dados e recuperação
 

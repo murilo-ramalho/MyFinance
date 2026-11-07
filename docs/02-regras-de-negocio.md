@@ -100,7 +100,7 @@ Saldo elegível inicial = R$ 3.500; saídas previstas/contratadas até próximo 
 Os identificadores **RN-080 a RN-100** estão definidos integralmente nos documentos [14](14-acoes-estornos-cancelamentos.md) e [15](15-recorrencias-condicionais-series.md). São regras **normativas** e integrantes da presente especificação, não sugestões opcionais.
 
 - **RN-101:** A tela de registros mostra mês corrente por padrão, fatos por data/hora quando conhecida, futuras expectativas/compromissos com identificação; datas sem hora importadas continuam sem hora.
-- **RN-102:** A tela Início exibe o mês atual e o próximo sequencialmente, com abertura, receitas, despesas, fechamento transmitido e menor saldo diário (quando calculável). Disponível seguro é indicador separado.
+- **RN-102:** A tela Início exibe o mês atual e o próximo sequencialmente, com abertura, receitas e despesas detalhadas por realizadas, compromissos e previsões, e fechamento transmitido. O menor saldo diário não integra esses cartões e continua consultável na tela Movimentações. Disponível seguro é indicador separado.
 - **RN-103:** Receitas eventuais não são projetadas como recorrentes a menos que exista regra confirmada. Recebimento de reembolso não é renda econômica nova.
 - **RN-104:** Orçamento e previsão são metadados de planejamento; jamais inventar pagamento real para fechar uma previsão ou cancelar diferença.
 - **RN-105:** Consumo de material previamente comprado pode compor custo de produção, mas não gera nova saída de caixa. Gastos menores são visões/filtros da mesma fonte de dados.
@@ -125,3 +125,7 @@ RN-040/044: a abertura demonstrativa é uma base datada do livro. Correções an
 RN-002/003: pagamento efetivo posterior à data de referência é recusado pela aplicação; a interface orienta usar compromisso ou previsão. RN-042/045: pendências vencidas entram na projeção na data de referência sem mudar o registro original ou virar liquidações. RN-049: primeira insuficiência abaixo da reserva + margem é um resultado separado da data do menor saldo. RN-037/071: reconciliação e edição preservam revisões antes/depois no armazenamento em memória.
 
 O plano de aquisição sem data descrito nas novas especificações é entidade distinta, ainda pendente. Não se permite criar expectativa de caixa sem data para simular esse plano. Ver [revisão e lacunas](19-revisao-consistencia.md).
+## Indicador anual da tela inicial
+
+- **RN-111:** A faixa «Receita projetada no ano» soma receitas externas realizadas até a data de referência e compromissos/previsões de caixa até 31 de dezembro do ano corrente. Pendências vencidas entram na projeção na data de referência sem alterar a data original. Reembolsos, transferências internas e movimentações de investimento ficam excluídos; o valor deve permanecer identificado como projeção.
+- **RN-112:** Na tela inicial, a abertura do mês atual é exibida; a abertura do próximo mês pode ser representada pelo fechamento do atual, pois `opening(n+1) = closing(n)`, sem repetir o mesmo valor.

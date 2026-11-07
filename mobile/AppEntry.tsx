@@ -15,9 +15,7 @@ function Button({ label, onPress }: { label: string; onPress(): void }) {
   return <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={gate.button}><Text style={gate.buttonText}>{label}</Text></Pressable>;
 }
 
-/** Demo and encrypted local sessions have different stores; demo never grants access to local data. */
 export default function AppEntry() {
-  const [demo, setDemo] = useState(Platform.OS === 'web');
   const [session, setSession] = useState<VaultSession | null>(null);
   const current = useRef<VaultSession | null>(null);
   const [existing, setExisting] = useState<boolean | null>(null);
@@ -39,46 +37,67 @@ export default function AppEntry() {
     const subscription = AppState.addEventListener('change', (state) => { if (state !== 'active' && current.current) lock(); });
     return () => { subscription.remove(); current.current?.lock(); current.current = null; };
   }, []);
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    let mounted = true;
+    void (async () => {
+      try { const found = await (await import('./src/platform/vault')).hasVault(); if (mounted) setExisting(found); }
+      catch { if (mounted) setError('Não foi possível acessar o cofre local neste aparelho.'); }
+    })();
+    return () => { mounted = false; };
+  }, []);
   const acceptSession = async (active: VaultSession) => {
     try {
       if (AppState.currentState !== 'active') throw new Error('Volte ao aplicativo para desbloquear.');
       const capture = await import('expo-screen-capture');
       await capture.preventScreenCaptureAsync('myfinance-local');
       if (AppState.currentState !== 'active') throw new Error('Volte ao aplicativo para desbloquear.');
-      current.current?.lock(); current.current = active; setSession(active); setDemo(false); setExisting(true); setError('');
-    } catch { active.lock(); throw new Error('Não foi possível proteger a tela neste build. A sessão permaneceu bloqueada.'); }
+      current.current?.lock(); current.current = active; setSession(active); setExisting(true); setError('');
+    } catch { active.lock(); throw new Error('Não foi possível proteger a tela. A sessão permaneceu bloqueada.'); }
   };
   const openEditor = (definition: Omit<EditorDefinition, 'id'>) => setEditor({ id: `vault-form-${formCount.current++}`, ...definition });
-  const probe = async () => {
-    setDemo(false); setError('');
-    try { setExisting(await (await import('./src/platform/vault')).hasVault()); }
-    catch { setError('Este modo exige um build Android próprio com os módulos de segurança. A demonstração continua disponível.'); }
-  };
   const unlock = () => openEditor({ title: 'Desbloquear registros locais', fields: [{ key: 'password', label: 'Senha local', secret: true }],
     submit: async (values) => acceptSession(await (await import('./src/platform/vault')).unlockVault(values.password)) });
-  const create = (fromBackup = false) => openEditor({ title: fromBackup ? 'Criar perfil a partir de backup' : 'Criar perfil local',
-    note: 'Build de validação: use dados fictícios até concluir a revisão e os testes nativos. A senha local deve ter pelo menos 12 caracteres.',
+  const create = (fromBackup = false) => {
+    const openingDate = deviceToday();
+    const openingMonth = monthOf(openingDate);
+    return openEditor({ title: fromBackup ? 'Criar perfil a partir de backup' : 'Criar perfil local',
+    note: fromBackup
+      ? 'Escolha uma senha local com pelo menos 12 caracteres. O backup será validado antes de criar o perfil; você pode ativar a biometria do Android.'
+      : 'Escolha uma senha com pelo menos 12 caracteres, informe o saldo real na data-base e escolha se quer ativar a biometria do Android.',
     fields: [{ key: 'username', label: 'Seu nome' }, { key: 'password', label: 'Nova senha local', secret: true }, { key: 'confirm', label: 'Confirmar nova senha local', secret: true },
       ...(fromBackup ? [{ key: 'recovery', label: 'Senha de recuperação do backup', secret: true }] : [
-        { key: 'opening', label: `Abertura do controle em 01/${deviceToday().slice(5, 7)}/${deviceToday().slice(0, 4)}`, value: '0,00', hint: 'Base inicial do livro, não uma conciliação automática de extrato. Lançamentos retroativos anteriores ajustam essa base. Aceita negativo.' },
-      ])], submit: async (values) => {
+        { key: 'accountName', label: 'Nome da conta principal' },
+        { key: 'moneyType', label: 'Tipo da conta principal', choices: [{ value: 'digital', label: 'Digital / bancária' }, { value: 'physical', label: 'Dinheiro físico' }] },
+        { key: 'opening', label: 'Saldo de abertura', hint: `Data-base: 01/${openingDate.slice(5, 7)}/${openingDate.slice(0, 4)}. Use o saldo real dessa data. Não importe novamente movimentos já refletidos nele.` },
+      ]),
+      { key: 'biometrics', label: 'Biometria do Android (digital se disponível)', value: 'yes', choices: [{ value: 'yes', label: 'Ativar' }, { value: 'no', label: 'Agora não' }] },
+    ], submit: async (values) => {
       if (values.password !== values.confirm) throw new Error('A confirmação de senha não confere.');
       const platform = await import('./src/platform/vault');
       let book: FinanceBook;
       if (fromBackup) { const candidate = await platform.readBackupFile(values.recovery); if (!candidate) return; book = candidate; }
       else {
+        if (!values.accountName.trim()) throw new Error('Informe o nome da conta principal.');
+        if (values.moneyType !== 'digital' && values.moneyType !== 'physical') throw new Error('Escolha o tipo da conta principal.');
         const text = values.opening.trim(); const sign = text.startsWith('-') ? -1 : 1;
         const parsed = /^(?:0|0,0{1,2})$/.test(text) ? 0 : parseBrlToMinor(sign < 0 ? text.slice(1) : text);
         if (parsed === null) throw new Error('Informe um saldo de abertura válido.');
-        book = emptyBook(monthOf(deviceToday()));
+        book = emptyBook(openingMonth);
         book.accounts = [
-          { id: 'digital', name: 'Minha conta', currency: 'BRL', kind: 'cash', moneyType: 'digital', openingOn: `${book.openingMonth}-01`, openingMinor: parsed * sign, eligible: true },
-          { id: 'physical', name: 'Minha carteira', currency: 'BRL', kind: 'cash', moneyType: 'physical', openingOn: `${book.openingMonth}-01`, openingMinor: 0, eligible: true },
+          { id: 'primary-cash-account', name: values.accountName.trim(), currency: 'BRL', kind: 'cash', moneyType: values.moneyType as 'digital' | 'physical', openingOn: `${openingMonth}-01`, openingMinor: parsed * sign, eligible: true },
         ];
-        book.categories = [{ id: 'food', name: 'Alimentação' }, { id: 'income', name: 'Renda' }];
       }
-      await acceptSession(await platform.createVault(values.username, values.password, book));
+      const active = await platform.createVault(values.username, values.password, book);
+      let biometricsUnavailable = false;
+      if (values.biometrics === 'yes') {
+        try { await active.enableBiometrics(); }
+        catch { biometricsUnavailable = true; }
+      }
+      await acceptSession(active);
+      if (biometricsUnavailable) setError('Perfil criado. Não foi possível ativar a biometria; a senha local continua funcionando. Você pode tentar novamente em Segurança e backup.');
     } });
+  };
   const backup = () => openEditor({ title: 'Backup cifrado portátil', note: 'Use uma senha de recuperação independente da senha local. Ela será necessária em outro aparelho.',
     fields: [{ key: 'password', label: 'Senha de recuperação', secret: true }, { key: 'confirm', label: 'Confirmar senha de recuperação', secret: true }],
     submit: async (values) => {
@@ -105,21 +124,18 @@ export default function AppEntry() {
       setCsvCandidate(previewMovementsCsv(text, active.store.snapshot(), deviceToday(bookTimeZone(active.store.snapshot()))));
     } });
   return <>
-    {demo ? <>
-      <App />
-      {Platform.OS !== 'web' ? <View style={gate.demoSwitch}><Button label="Abrir registros locais protegidos" onPress={() => { void probe(); }} /></View> : null}
-    </> : session ? <App key={`local-${session.username}-${sessionEpoch}`} store={session.store} protectedSession onSettings={() => setSettings(true)} /> : (
-      <SafeAreaView style={gate.page}><ScrollView contentContainerStyle={gate.content} keyboardShouldPersistTaps="handled">
-        <Text style={gate.title}>myFinance</Text><Text style={gate.lead}>Seus registros ficam neste aparelho.</Text>
-        <Text style={gate.note}>Modo nativo em validação. Use dados fictícios até a revisão de segurança e os testes em aparelho serem concluídos.</Text>
+    {session ? <App key={`local-${session.username}-${sessionEpoch}`} store={session.store} onSettings={() => setSettings(true)} /> : Platform.OS === 'web' ? (
+      <SafeAreaView style={gate.page}><ScrollView contentContainerStyle={gate.content}>
+        <Text style={gate.title}>myFinance</Text><Text style={gate.lead}>Seus registros ficam protegidos no aparelho.</Text>
+        <Text style={gate.note}>Para acessar ou criar seu cofre, use o aplicativo instalado em um aparelho compatível.</Text>
         {error ? <Text accessibilityRole="alert" style={gate.error}>{error}</Text> : null}
-        <Button label="Consultar perfil local" onPress={() => { void probe(); }} />
-        <Button label={proofBusy ? 'Validando este build…' : 'Executar validação nativa com dados fictícios'} onPress={() => { if (proofBusy) return; setProofBusy(true); void (async () => {
-          try { setProof(await (await import('./src/platform/nativeProof')).runNativeProof()); }
-          catch { setError('Módulos de segurança indisponíveis. Use um build nativo próprio.'); }
-          finally { setProofBusy(false); }
-        })(); }} />
-        {proof.map((entry) => <Text style={gate.note} key={entry.id}>{entry.status === 'passed' ? 'Validado' : entry.status === 'failed' ? 'Falhou' : 'Verificação manual pendente'}: {entry.detail}</Text>)}
+      </ScrollView></SafeAreaView>
+    ) : (
+      <SafeAreaView style={gate.page}><ScrollView contentContainerStyle={gate.content} keyboardShouldPersistTaps="handled">
+        <Text style={gate.title}>myFinance</Text><Text style={gate.lead}>Suas finanças, no seu aparelho.</Text>
+        <Text style={gate.note}>Crie ou desbloqueie seu cofre local para acessar seus registros.</Text>
+        {error ? <Text accessibilityRole="alert" style={gate.error}>{error}</Text> : null}
+        {existing === null && !error ? <Text style={gate.note}>Verificando o cofre local…</Text> : null}
         {existing === true ? <>
           <Button label="Desbloquear com senha" onPress={unlock} />
           <Button label="Desbloquear com biometria" onPress={() => { void (async () => {
@@ -130,7 +146,14 @@ export default function AppEntry() {
           <Button label="Criar perfil local" onPress={() => create()} />
           <Button label="Restaurar backup em novo perfil" onPress={() => create(true)} />
         </> : null}
-        <Button label="Usar demonstração em memória" onPress={() => setDemo(true)} />
+        {__DEV__ ? <>
+          <Button label={proofBusy ? 'Verificando proteção…' : 'Verificar proteção do aparelho'} onPress={() => { if (proofBusy) return; setProofBusy(true); void (async () => {
+            try { setProof(await (await import('./src/platform/nativeProof')).runNativeProof()); }
+            catch { setError('Não foi possível verificar o armazenamento protegido.'); }
+            finally { setProofBusy(false); }
+          })(); }} />
+          {proof.map((entry) => <Text style={gate.note} key={entry.id}>{entry.status === 'passed' ? 'Validado' : entry.status === 'failed' ? 'Falhou' : 'Verificação manual pendente'}: {entry.detail}</Text>)}
+        </> : null}
       </ScrollView></SafeAreaView>
     )}
     {settings && session ? <Modal visible={!editor && !restoreCandidate && !csvCandidate} transparent onRequestClose={() => setSettings(false)}>
@@ -195,5 +218,4 @@ const gate = StyleSheet.create({
   note: { color: '#586B60', lineHeight: 21 }, error: { color: '#A63838', lineHeight: 22 },
   button: { backgroundColor: '#214B3D', padding: 15, borderRadius: 12, marginVertical: 5 }, buttonText: { color: 'white', fontWeight: '600' },
   overlay: { flex: 1, backgroundColor: '#0007', justifyContent: 'center', padding: 20 }, settings: { backgroundColor: '#F4F3ED', padding: 20, borderRadius: 20, gap: 9 },
-  demoSwitch: { backgroundColor: '#F4F3ED', paddingHorizontal: 20, paddingBottom: 4 },
 });

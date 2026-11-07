@@ -6,7 +6,7 @@ tags:
 ---
 - launchApp:
     clearState: true
-- tapOn: 'Executar validação nativa com dados fictícios'
+- tapOn: 'Verificar proteção do aparelho'
 - extendedWaitUntil:
     visible: 'Validado: Adulteração recusada antes de restaurar.'
     timeout: 120000

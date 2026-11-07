@@ -13,10 +13,6 @@ import {
   View,
 } from 'react-native';
 
-import {
-  createDemoBook,
-  type Project,
-} from './src/demo/demoData';
 import { formatBrazilianDate, parseBrazilianDate } from './src/domain/dates';
 import { brlInputFromMinor, formatBrl, parseBrlToMinor } from './src/domain/money';
 import {
@@ -27,6 +23,7 @@ import {
   monthOf,
   currentCashByType,
   estimateSafeToSpend,
+  projectAnnualIncome,
   summarizeProjectFlow,
   summarizeMonth,
   type Movement,
@@ -42,7 +39,7 @@ import { deviceToday } from './src/platform/deviceDate';
 import { openingCashForMonth, projectCashMonths } from './src/domain/projections';
 import { FinanceStore } from './src/application/financeStore';
 import { bookMovements, bookOpeningCash, eligibleMovements, monthEnd, protectedMinor, financialPosition, eligibleOpeningBalance, forecastHorizon, bookTimeZone, historicalMonthSummary } from './src/domain/bookSelectors';
-import type { Account, Category, CommandContext, CreditCard, FinanceBook, FinanceCommand } from './src/domain/book';
+import type { Account, BookProject, Category, CommandContext, CreditCard, FinanceBook, FinanceCommand } from './src/domain/book';
 import { FinanceWorkspace } from './src/ui/FinanceWorkspace';
 
 type Screen = 'home' | 'movements' | 'views' | 'workspace';
@@ -79,7 +76,7 @@ function natureLabel(nature: MovementNature): string {
 }
 
 function movementLabel(id: string | null, options: readonly { id: string; name: string }[]): string | null {
-  return id === null ? null : options.find((option) => option.id === id)?.name ?? 'Etiqueta de teste';
+  return id === null ? null : options.find((option) => option.id === id)?.name ?? 'Etiqueta indisponível';
 }
 
 function moneyTypeLabel(moneyType: MovementMoneyType): string {
@@ -94,7 +91,7 @@ function movementPaymentLabel(movement: Movement, cards: readonly CreditCard[]):
   return moneyTypeLabel(movement.moneyType);
 }
 
-function MovementRow({ movement, projects, cards, onPress }: { movement: Movement; projects: readonly Project[]; cards: readonly CreditCard[]; onPress?: () => void }) {
+function MovementRow({ movement, projects, cards, onPress }: { movement: Movement; projects: readonly BookProject[]; cards: readonly CreditCard[]; onPress?: () => void }) {
   const displayDate = displayDateOf(movement);
   const displayTime = displayTimeOf(movement);
   const cashDate = movement.settledOn ?? movement.plannedSettlementOn;
@@ -185,90 +182,124 @@ function ProjectFlowOverview({ projectId, summary }: { projectId: string; summar
   );
 }
 
-function MonthCard({
-  summary,
-  subtitle,
-}: {
-  summary: ReturnType<typeof summarizeMonth>;
-  subtitle: string;
-}) {
-  const balanceIsNegative = summary.closingBalanceMinor < 0;
+function MonthCard({ summary, isCurrent }: { summary: ReturnType<typeof summarizeMonth>; isCurrent: boolean }) {
+  const isNegative = summary.closingBalanceMinor < 0;
 
   return (
-    <View style={styles.monthCard}>
+    <View style={[styles.monthCard, isCurrent ? styles.currentMonthCard : styles.nextMonthCard]} testID={`month-summary-${summary.month}`}>
       <View style={styles.monthCardHeader}>
-        <View>
-          <Text style={styles.monthTitle}>{monthLabel(summary.month)}</Text>
-        </View>
-        <View style={styles.monthBadge}><Text style={styles.monthSubtitle}>{subtitle}</Text></View>
-      </View>
-
-      <View style={styles.monthBalances}>
-        <View style={styles.openingBalanceBlock}>
-          <Text style={styles.balanceCaption}>Abertura</Text>
-          <Text style={[styles.openingBalanceValue, summary.openingBalanceMinor < 0 && styles.negativeBalance]} numberOfLines={1} adjustsFontSizeToFit>
-            {formatBrl(summary.openingBalanceMinor)}
-          </Text>
-        </View>
-        <View style={styles.closingBalanceBlock}>
-          <Text style={styles.balanceCaption}>Fechamento previsto</Text>
-          <Text
-            testID={`closing-balance-${summary.month}`}
-            style={[styles.balanceValue, balanceIsNegative && styles.negativeBalance]}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-          >
-            {formatBrl(summary.closingBalanceMinor)}
-          </Text>
+        <Text style={styles.monthCalendarIcon} accessibilityElementsHidden>▦</Text>
+        <View style={styles.monthHeadingCopy}>
+          <Text style={styles.monthTitle}>{isCurrent ? monthLabel(summary.month) : 'Próximo mês'}</Text>
+          {!isCurrent ? <Text style={styles.monthSubtitle}>{monthLabel(summary.month)}</Text> : null}
         </View>
       </View>
 
-      <View style={styles.summaryDivider} />
-      <View style={styles.summaryGrid}>
-        <View style={styles.summaryCell}>
-          <Text style={styles.summaryLabel}>Entradas</Text>
-          <Text style={styles.summaryValue}>+{formatBrl(summary.inflowMinor)}</Text>
-          <SummaryLine label="Realizadas " value={summary.realizedInflowMinor} testID={`realized-inflow-${summary.month}`} />
-          <SummaryLine label="Compromissos " value={summary.committedInflowMinor} testID={`committed-inflow-${summary.month}`} />
-          <SummaryLine label="Previsões " value={summary.forecastInflowMinor} testID={`forecast-inflow-${summary.month}`} />
+      {isCurrent ? (
+        <View style={styles.openingMetric}>
+          <View style={styles.openingMetricIcon}><Text style={styles.walletGlyph}>▱</Text></View>
+          <View style={styles.openingMetricCopy}>
+            <Text style={styles.openingMetricLabel}>Saldo mês anterior</Text>
+            <Text style={[styles.openingMetricAmount, summary.openingBalanceMinor < 0 && styles.negativeBalance]}>
+              {formatBrl(summary.openingBalanceMinor)}
+            </Text>
+          </View>
         </View>
-        <View style={[styles.summaryCell, styles.outflowCell]}>
-          <Text style={styles.summaryLabel}>Saídas</Text>
-          <Text style={styles.summaryValue}>−{formatBrl(summary.outflowMinor)}</Text>
-          <SummaryLine label="Realizadas " value={summary.realizedOutflowMinor} testID={`realized-outflow-${summary.month}`} />
-          <SummaryLine label="Compromissos " value={summary.committedOutflowMinor} testID={`committed-outflow-${summary.month}`} />
-          <SummaryLine label="Previsões " value={summary.forecastOutflowMinor} testID={`forecast-outflow-${summary.month}`} />
-        </View>
-      </View>
-
-      <View style={styles.lowestBalance}>
-        <Text style={styles.lowestIcon}>↓</Text>
-        <View style={styles.lowestCopy}>
-          <Text style={styles.lowestText}>Menor saldo diário</Text>
-          <Text style={[styles.lowestStrong, summary.lowestBalanceMinor < 0 && styles.negativeBalance]}>
-            {formatBrl(summary.lowestBalanceMinor)} · {formatBrazilianDate(summary.lowestBalanceOn)}
-            {summary.lowestBalanceTime ? ` ${summary.lowestBalanceTime}` : ''}
-          </Text>
-        </View>
-      </View>
-      {summary.lowestBalanceMinor < 0 ? (
-        <Text style={styles.negativeNote}>A projeção fica negativa em parte do mês.</Text>
       ) : null}
+
+      <View style={styles.monthMetricsColumn}>
+        <FlowMetric
+          label="Receita"
+          amountMinor={summary.inflowMinor}
+          realizedMinor={summary.realizedInflowMinor}
+          committedMinor={summary.committedInflowMinor}
+          forecastMinor={summary.forecastInflowMinor}
+          direction="income"
+          month={summary.month}
+        />
+        <FlowMetric
+          label="Despesa"
+          amountMinor={summary.outflowMinor}
+          realizedMinor={summary.realizedOutflowMinor}
+          committedMinor={summary.committedOutflowMinor}
+          forecastMinor={summary.forecastOutflowMinor}
+          direction="expense"
+          month={summary.month}
+        />
+      </View>
+
+      <View style={styles.closingBalanceBlock}>
+        <Text style={styles.closingCaption}>{isCurrent ? 'Saldo do mês' : 'Saldo próximo mês'}</Text>
+        <Text
+          testID={`closing-balance-${summary.month}`}
+          style={[styles.closingValue, isNegative && styles.negativeBalance]}
+        >
+          {formatBrl(summary.closingBalanceMinor)}
+        </Text>
+      </View>
+
+    </View>
+  );
+}
+
+function FlowMetric({
+  label, amountMinor, realizedMinor, committedMinor, forecastMinor, direction, month,
+}: {
+  label: string;
+  amountMinor: number;
+  realizedMinor: number;
+  committedMinor: number;
+  forecastMinor: number;
+  direction: 'income' | 'expense';
+  month: YearMonth;
+}) {
+  const isIncome = direction === 'income';
+  const id = isIncome ? 'inflow' : 'outflow';
+  return (
+    <View
+      style={[styles.flowMetric, isIncome ? styles.incomeMetric : styles.expenseMetric]}
+      testID={`flow-card-${id}-${month}`}
+    >
+      <View style={styles.flowMetricHeader}>
+        <View style={[styles.flowIcon, isIncome ? styles.incomeIcon : styles.expenseIcon]}>
+          <Text style={[styles.flowGlyph, isIncome ? styles.incomeGlyph : styles.expenseGlyph]}>{isIncome ? '↑' : '↓'}</Text>
+        </View>
+        <Text style={styles.flowLabel}>{label}</Text>
+        <Text style={styles.flowAmount} testID={`flow-total-${id}-${month}`}>
+          {formatBrl(amountMinor)}
+        </Text>
+      </View>
+      <View style={styles.flowBreakdown}>
+        <SummaryLine label="Realizadas" value={realizedMinor} testID={`realized-${id}-${month}`} />
+        <SummaryLine label="Compromissos" value={committedMinor} testID={`committed-${id}-${month}`} />
+        <SummaryLine label="Previsões" value={forecastMinor} testID={`forecast-${id}-${month}`} />
+      </View>
     </View>
   );
 }
 
 function SummaryLine({ label, value, testID }: { label: string; value: number; testID: string }) {
   return (
-    <Text style={styles.summaryBreakdown} numberOfLines={1} adjustsFontSizeToFit testID={testID}>{label}{formatBrl(value)}</Text>
+    <View style={styles.summaryBreakdown}>
+      <Text style={styles.summaryBreakdownLabel}>{label}</Text>
+      <Text accessibilityLabel={`${label} ${formatBrl(value)}`} style={styles.summaryBreakdownValue} testID={testID}>
+        {formatBrl(value)}
+      </Text>
+    </View>
   );
 }
 
-function DemoBanner() {
+function AnnualIncomeCard({ amountMinor }: { amountMinor: number }) {
   return (
-    <View style={styles.demoBanner} accessibilityRole="summary">
-      <View style={styles.demoDot} />
-      <Text style={styles.demoBannerText}>TESTE · dados fictícios, só na memória</Text>
+    <View style={styles.annualIncomeCard} accessibilityRole="summary">
+      <View style={styles.annualIncomeTopRow}>
+        <View style={styles.annualIncomeIcon}><Text style={styles.annualIncomeGlyph}>▥</Text></View>
+        <View style={styles.annualIncomeCopy}>
+          <Text style={styles.annualIncomeLabel}>Receita projetada no ano</Text>
+          <Text style={styles.annualIncomeHint}>Recebida + compromissos + previsões</Text>
+        </View>
+      </View>
+      <Text style={styles.annualIncomeValue} testID="annual-income-projection">{formatBrl(amountMinor)}</Text>
     </View>
   );
 }
@@ -276,26 +307,26 @@ function DemoBanner() {
 function SafeSpendCard({
   estimate,
   onScenarioChange,
-  demo = true,
 }: {
   estimate: SafeSpendEstimate | null;
   onScenarioChange: (scenario: SafeSpendScenario) => void;
-  demo?: boolean;
 }) {
   if (!estimate) {
     return (
       <View style={styles.safeSpendCard} testID="safe-spend-unavailable">
-        <Text style={styles.safeSpendEyebrow}>ESTIMATIVA DE DEMONSTRAÇÃO</Text>
+        <Text style={styles.safeSpendEyebrow}>DISPONÍVEL SEGURO</Text>
         <Text style={styles.safeSpendUnavailableTitle}>Sem entrada futura para definir o horizonte</Text>
-        <Text style={styles.safeSpendFootnote}>Adicione uma entrada prevista fictícia para experimentar o indicador.</Text>
+        <Text style={styles.safeSpendFootnote}>Inclua uma receita prevista para calcular esta estimativa.</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.safeSpendCard} accessibilityRole="summary">
-      <Text style={styles.safeSpendEyebrow}>GASTO SEGURO · ESTIMATIVA</Text>
-      <Text style={styles.safeSpendHorizon}>Até {formatBrazilianDate(estimate.horizonDate)}</Text>
+      <View style={styles.safeSpendHeader}>
+        <Text style={styles.safeSpendEyebrow}>DISPONÍVEL SEGURO · ESTIMATIVA</Text>
+        <Text style={styles.safeSpendHorizon}>Até {formatBrazilianDate(estimate.horizonDate)}</Text>
+      </View>
       <Text
         testID="safe-spend-amount"
         style={[styles.safeSpendAmount, estimate.spendableMinor < 0 && styles.safeSpendNegative]}
@@ -317,7 +348,7 @@ function SafeSpendCard({
         />
       </View>
       <Text style={styles.safeSpendDetails}>
-        Caixa de teste: {formatBrl(estimate.currentCashMinor)} · menor saldo projetado: {formatBrl(estimate.lowestProjectedBalanceMinor)} em {formatBrazilianDate(estimate.lowestBalanceOn)}
+        Saldo atual {formatBrl(estimate.currentCashMinor)} · menor saldo projetado {formatBrl(estimate.lowestProjectedBalanceMinor)} em {formatBrazilianDate(estimate.lowestBalanceOn)}
       </Text>
       {estimate.firstInsufficientOn !== null ? (
         <Text style={styles.safeSpendWarning} accessibilityRole="alert">
@@ -325,16 +356,16 @@ function SafeSpendCard({
         </Text>
       ) : null}
       <Text style={styles.safeSpendFootnote}>
-        {demo ? 'Caixa e reserva são fictícios. ' : 'Baseada nos registros informados. '}Exclui {formatBrl(estimate.protectedMinor)} protegidos e margem de {formatBrl(estimate.cushionMinor)}.
+        Baseada nos registros informados. Exclui {formatBrl(estimate.protectedMinor)} protegidos e margem de {formatBrl(estimate.cushionMinor)}.
         {estimate.scenario === 'conservative' ? ' Ignora receitas previstas incertas.' : ' Inclui receitas previstas.'}
       </Text>
     </View>
   );
 }
 
-export default function App({ store: suppliedStore, protectedSession = false, onSettings }: {
-  store?: FinanceStore; protectedSession?: boolean; onSettings?: () => void;
-} = {}) {
+export default function App({ store, onSettings }: {
+  store: FinanceStore; onSettings?: () => void;
+}) {
   const [screen, setScreen] = useState<Screen>('home');
   const [portfolioView, setPortfolioView] = useState<PortfolioView>('cards');
   const [monthOffset, setMonthOffset] = useState(0);
@@ -346,13 +377,9 @@ export default function App({ store: suppliedStore, protectedSession = false, on
   const [formOpen, setFormOpen] = useState(false);
   const [projectFormOpen, setProjectFormOpen] = useState(false);
   const [editingMovement, setEditingMovement] = useState<Movement | null>(null);
-  const nextTestId = useRef(1);
+  const nextMovementId = useRef(1);
   const nextProjectId = useRef(1);
-  const [ledger] = useState(() => {
-    const initialToday = deviceToday();
-    const month = monthOf(initialToday);
-    return { store: suppliedStore ?? new FinanceStore(createDemoBook(month, initialToday)) };
-  });
+  const [ledger] = useState(() => ({ store }));
   const [book, setBook] = useState<FinanceBook>(() => ledger.store.snapshot());
   const projects = book.projects;
   const nextRequestId = useRef(book.audit.length + 1);
@@ -372,6 +399,10 @@ export default function App({ store: suppliedStore, protectedSession = false, on
   );
   const currentSummary = monthSummaries[0];
   const followingSummary = monthSummaries[1];
+  const annualIncomeProjectionMinor = useMemo(() => {
+    const yearEnd = monthEnd(`${today.slice(0, 4)}-12` as YearMonth);
+    return projectAnnualIncome(bookMovements(book, yearEnd), Number(today.slice(0, 4)), today);
+  }, [book, today]);
   const openingCash = useMemo(
     () => openingCashForMonth(movements, book.baselineMovements, opening, currentMonth),
     [movements, book, opening, currentMonth],
@@ -444,7 +475,12 @@ export default function App({ store: suppliedStore, protectedSession = false, on
   }) => {
     const newMovementId = () => {
       let candidate: string;
-      do { candidate = `test-${nextTestId.current++}`; } while (book.movements.some((entry) => entry.id === candidate) || book.operations.some((entry) => entry.id === candidate));
+      const usedIds = new Set([
+        ...book.movements.map((entry) => entry.id),
+        ...book.operations.map((entry) => entry.id),
+        ...book.audit.flatMap((entry) => entry.changes.map((change) => change.id)),
+      ]);
+      do { candidate = `movement-${nextMovementId.current++}`; } while (usedIds.has(candidate));
       return candidate;
     };
     pendingSave.current ??= {
@@ -494,8 +530,12 @@ export default function App({ store: suppliedStore, protectedSession = false, on
 
   const saveProject = (name: string, description: string) => {
     let projectId: string;
-    do { projectId = `test-project-${nextProjectId.current++}`; } while (book.projects.some((entry) => entry.id === projectId));
-    const project: Project = {
+    const usedIds = new Set([
+      ...book.projects.map((entry) => entry.id),
+      ...book.audit.flatMap((entry) => entry.changes.map((change) => change.id)),
+    ]);
+    do { projectId = `project-${nextProjectId.current++}`; } while (usedIds.has(projectId));
+    const project: BookProject = {
       id: projectId,
       name,
       description,
@@ -518,7 +558,7 @@ export default function App({ store: suppliedStore, protectedSession = false, on
           </View>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Adicionar movimentação de teste"
+            accessibilityLabel="Adicionar movimentação"
             testID="add-movement-button"
             onPress={openNewMovement}
             style={styles.addButton}
@@ -527,7 +567,7 @@ export default function App({ store: suppliedStore, protectedSession = false, on
           </Pressable>
         </View>
 
-        {protectedSession ? <View style={styles.demoBanner}><Text style={styles.demoBannerText}>REGISTROS LOCAIS · banco cifrado</Text><Pressable accessibilityRole="button" onPress={onSettings}><Text>Segurança e backup</Text></Pressable></View> : <DemoBanner />}
+        {onSettings ? <View style={styles.sessionActions}><Pressable accessibilityRole="button" onPress={onSettings}><Text>Segurança e backup</Text></Pressable></View> : null}
 
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -538,26 +578,11 @@ export default function App({ store: suppliedStore, protectedSession = false, on
             <View style={styles.emptyCard}><Text style={styles.emptyTitle}>Seu livro está vazio</Text><Text style={styles.emptyText}>Cadastre uma conta e informe o saldo de abertura para começar. Nenhum saldo bancário foi presumido.</Text><Pressable accessibilityRole="button" onPress={() => setScreen('workspace')} style={styles.primaryButton}><Text style={styles.primaryButtonText}>Organizar contas</Text></Pressable></View>
           ) : screen === 'home' ? (
             <>
-              <Text style={styles.eyebrow}>VISÃO GERAL</Text>
-              <Text style={styles.pageTitle}>Seu dinheiro, mês a mês.</Text>
-              <Text style={styles.pageLead}>
-                Veja o que já aconteceu e o que ainda está previsto.
-              </Text>
-
-              <SafeSpendCard estimate={safeSpendEstimate} demo={!protectedSession} onScenarioChange={setSafeSpendScenario} />
-              <MonthCard summary={currentSummary} subtitle="Mês atual · inclui previsões" />
-              <MonthCard summary={followingSummary} subtitle="Próximo mês · projeção" />
-
-              <SectionHeader title="Movimentações deste mês" action="Ver todas" onPress={() => setScreen('movements')} />
-              <View style={styles.listCard}>
-                {listMovementsForMonth(movements, currentMonth).slice(0, 4).map((movement) => (
-                  <MovementRow key={movement.id} movement={movement} projects={projects} cards={book.cards} onPress={() => openEditMovement(movement)} />
-                ))}
-              </View>
-
-              <Pressable style={styles.primaryButton} onPress={openNewMovement} accessibilityRole="button" accessibilityLabel="Registrar movimentação de teste">
-                <Text style={styles.primaryButtonText}>＋  Registrar movimentação de teste</Text>
-              </Pressable>
+              <Text style={styles.pageTitle}>Resumo</Text>
+              <MonthCard summary={currentSummary} isCurrent />
+              <MonthCard summary={followingSummary} isCurrent={false} />
+              <AnnualIncomeCard amountMinor={annualIncomeProjectionMinor} />
+              <SafeSpendCard estimate={safeSpendEstimate} onScenarioChange={setSafeSpendScenario} />
             </>
           ) : screen === 'movements' ? (
             <>
@@ -714,27 +739,26 @@ export default function App({ store: suppliedStore, protectedSession = false, on
                   <Text style={styles.emptyTitle}>{visibleMovements.length === 0 ? 'Nada por aqui ainda' : 'Nenhum resultado'}</Text>
                   <Text style={styles.emptyText}>
                     {visibleMovements.length === 0
-                      ? 'Adicione um lançamento fictício para experimentar o fluxo.'
+                      ? 'Seus registros aparecerão aqui quando você começar.'
                       : 'Ajuste a busca ou os filtros para ver outras movimentações.'}
                   </Text>
                 </View>
               )}
               {filteredMovements.length > 0 ? (
-                <Text style={styles.editHint}>Toque em uma linha para editar o lançamento de teste.</Text>
+              <Text style={styles.editHint}>Toque em uma linha para editar o lançamento.</Text>
               ) : null}
-              <Pressable style={styles.primaryButton} onPress={openNewMovement} accessibilityRole="button" accessibilityLabel="Registrar movimentação de teste">
-                <Text style={styles.primaryButtonText}>＋  Registrar movimentação de teste</Text>
+              <Pressable style={styles.primaryButton} onPress={openNewMovement} accessibilityRole="button" accessibilityLabel="Registrar movimentação">
+                <Text style={styles.primaryButtonText}>＋  Registrar movimentação</Text>
               </Pressable>
             </>
           ) : screen === 'workspace' ? (
             <FinanceWorkspace book={book} today={today} selectedOperationId={selectedOperationId} onSelectOperation={setSelectedOperationId}
-              persistent={protectedSession}
               onCommand={(command: FinanceCommand, context: CommandContext) => { ledger.store.execute(command, context); setBook(ledger.store.snapshot()); }} />
           ) : (
             <>
               <Text style={styles.eyebrow}>SUAS VISÕES</Text>
               <Text style={styles.pageTitle}>Cartões, projetos e dinheiro.</Text>
-              <Text style={styles.pageLead}>Organize os mesmos lançamentos por contexto.{protectedSession ? ' Os valores vêm dos seus registros.' : ' Tudo abaixo usa dados fictícios.'}</Text>
+              <Text style={styles.pageLead}>Organize os mesmos lançamentos por contexto. Os valores vêm dos seus registros.</Text>
 
               <View style={styles.portfolioTabs}>
                 <FilterChip label="Cartões" selected={portfolioView === 'cards'} testID="view-cards" onPress={() => setPortfolioView('cards')} />
@@ -759,7 +783,7 @@ export default function App({ store: suppliedStore, protectedSession = false, on
                               ))}
                             </View>
                           ) : (
-                            <Text style={styles.portfolioDescription}>Nenhuma compra de teste marcada neste cartão.</Text>
+                            <Text style={styles.portfolioDescription}>Nenhuma compra marcada neste cartão.</Text>
                           )}
                         </View>
                       );
@@ -815,18 +839,18 @@ export default function App({ store: suppliedStore, protectedSession = false, on
                   <View style={styles.moneyCard} testID="money-type-digital">
                     <Text style={styles.moneyTypeTitle}>Dinheiro digital</Text>
                     <Text style={styles.moneyTypeValue}>{formatBrl(currentCash.digital)}</Text>
-                    <Text style={styles.portfolioDescription}>Saldo de demonstração em conta digital/bancária.</Text>
+                    <Text style={styles.portfolioDescription}>Soma das contas digitais cadastradas.</Text>
                     <Text style={styles.portfolioFootnote}>A reserva de {formatBrl(protectedMinor(book))} já está dentro do caixa e não é somada de novo.</Text>
                   </View>
                   <View style={styles.moneyCard} testID="money-type-physical">
                     <Text style={styles.moneyTypeTitle}>Dinheiro físico</Text>
                     <Text style={styles.moneyTypeValue}>{formatBrl(currentCash.physical)}</Text>
-                    <Text style={styles.portfolioDescription}>Saldo de demonstração em espécie.</Text>
+                    <Text style={styles.portfolioDescription}>Soma das contas físicas cadastradas.</Text>
                   </View>
                   <View style={styles.moneyCard} testID="money-type-investments">
                     <Text style={styles.moneyTypeTitle}>Investimentos</Text>
                     <Text style={styles.moneyTypeValue}>{formatBrl(investmentBalance)}</Text>
-                    <Text style={styles.portfolioDescription}>Patrimônio ilustrativo, separado do caixa e do gasto seguro.</Text>
+                    <Text style={styles.portfolioDescription}>Patrimônio investido informado manualmente, separado do caixa e do gasto seguro.</Text>
                   </View>
                   <Text style={styles.portfolioFootnote}>Registre aportes, resgates e avaliações em Organizar. Investimentos ficam separados do caixa disponível e valorização não é dinheiro recebido.</Text>
                 </>
@@ -851,7 +875,6 @@ export default function App({ store: suppliedStore, protectedSession = false, on
         accounts={book.accounts}
         categories={book.categories}
         cards={book.cards}
-        isDemo={!protectedSession}
         onActions={editingMovement ? () => {
           const movementId = editingMovement.id;
           ledger.store.execute({ kind: 'promote-movement', movementId }, { requestId: `promote-${Date.now()}-${nextRequestId.current++}`, recordedAt: new Date().toISOString(), today });
@@ -950,19 +973,17 @@ function MovementForm({
   categories,
   cards,
   onActions,
-  isDemo,
   onClose,
   onSave,
 }: {
   visible: boolean;
   today: NonNullable<Movement['occurredOn']>;
   movement: Movement | null;
-  projects: readonly Project[];
+  projects: readonly BookProject[];
   accounts: readonly Account[];
   categories: readonly Category[];
   cards: readonly CreditCard[];
   onActions?: () => void;
-  isDemo: boolean;
   onClose: () => void;
   onSave: (input: {
     title: string;
@@ -1282,9 +1303,7 @@ function MovementForm({
             <Pressable style={styles.saveButton} onPress={save} accessibilityRole="button" testID="movement-save-button">
               <Text style={styles.saveButtonText}>{movement ? 'Salvar alteração' : 'Salvar registro'}</Text>
             </Pressable>
-            <Text style={styles.formFootnote}>
-              {isDemo ? 'Este lançamento fica apenas na memória e desaparece ao fechar o app.' : 'Este registro é salvo neste aparelho, protegido pela chave local.'}
-            </Text>
+            <Text style={styles.formFootnote}>Este registro é salvo neste aparelho, protegido pela chave local.</Text>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -1299,7 +1318,7 @@ function ProjectForm({
   onSave,
 }: {
   visible: boolean;
-  projects: readonly Project[];
+  projects: readonly BookProject[];
   onClose: () => void;
   onSave: (name: string, description: string) => void;
 }) {
@@ -1353,7 +1372,7 @@ function ProjectForm({
           <View style={styles.formHandle} />
           <View style={styles.formHeader}>
             <View>
-              <Text style={styles.formEyebrow}>NOVO PROJETO DE TESTE</Text>
+              <Text style={styles.formEyebrow}>NOVO PROJETO</Text>
               <Text style={styles.formTitle}>Criar projeto</Text>
             </View>
             <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Fechar" testID="close-project-form-button">
@@ -1458,8 +1477,8 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: COLORS.background },
   appShell: { flex: 1 },
   topBar: {
-    minHeight: 68,
-    paddingHorizontal: 22,
+    minHeight: 72,
+    paddingHorizontal: 20,
     paddingTop: 7,
     paddingBottom: 10,
     flexDirection: 'row',
@@ -1469,74 +1488,73 @@ const styles = StyleSheet.create({
   brand: { color: COLORS.ink, fontSize: 21, fontWeight: '900', letterSpacing: 0.1 },
   brandSub: { color: COLORS.muted, fontSize: 9, fontWeight: '700', letterSpacing: 1.3, marginTop: 2 },
   addButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
+    width: 50,
+    height: 50,
+    borderRadius: 19,
     backgroundColor: COLORS.lime,
     alignItems: 'center',
     justifyContent: 'center',
   },
   addButtonText: { color: COLORS.ink, fontSize: 28, fontWeight: '500', marginTop: -2 },
-  demoBanner: {
-    marginHorizontal: 20,
-    marginBottom: 10,
-    paddingHorizontal: 13,
-    height: 34,
-    borderRadius: 11,
-    backgroundColor: '#FFF5D8',
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  demoDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: COLORS.green, marginRight: 8 },
-  demoBannerText: { color: COLORS.green, fontSize: 10, fontWeight: '800', letterSpacing: 0.45 },
-  scrollContent: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 22 },
+  sessionActions: { marginHorizontal: 20, marginBottom: 10, minHeight: 34, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' },
+  scrollContent: { paddingHorizontal: 18, paddingTop: 13, paddingBottom: 22 },
   eyebrow: { color: COLORS.green, fontSize: 10, fontWeight: '900', letterSpacing: 1.7, marginBottom: 7 },
-  pageTitle: { color: COLORS.ink, fontSize: 27, lineHeight: 33, fontWeight: '800', letterSpacing: -0.8 },
+  pageTitle: { color: COLORS.ink, fontSize: 30, lineHeight: 37, fontWeight: '900', letterSpacing: -0.9, marginBottom: 13 },
   pageLead: { color: COLORS.muted, fontSize: 14, lineHeight: 20, marginTop: 5, marginBottom: 19 },
-  safeSpendCard: { backgroundColor: '#17223D', padding: 18, borderRadius: 18, marginBottom: 13, borderWidth: 1, borderColor: '#17223D' },
-  safeSpendEyebrow: { color: '#D9E0FF', fontSize: 10, fontWeight: '900', letterSpacing: 1.2 },
-  safeSpendHorizon: { color: '#C3CBE2', fontSize: 12, fontWeight: '600', marginTop: 5 },
-  safeSpendAmount: { color: '#FFFFFF', fontSize: 34, lineHeight: 42, fontWeight: '900', letterSpacing: -0.8, marginTop: 2 },
-  safeSpendNegative: { color: '#FFB7BC' },
+  safeSpendCard: { backgroundColor: COLORS.card, padding: 14, borderRadius: 18, marginBottom: 13, borderWidth: 1, borderColor: COLORS.line },
+  safeSpendHeader: { alignItems: 'flex-start' },
+  safeSpendEyebrow: { color: COLORS.muted, fontSize: 10, fontWeight: '900', letterSpacing: 0.6 },
+  safeSpendHorizon: { color: COLORS.muted, fontSize: 11, fontWeight: '600', marginTop: 3 },
+  safeSpendAmount: { color: COLORS.ink, fontSize: 25, lineHeight: 31, fontWeight: '900', letterSpacing: -0.6, marginTop: 4 },
+  safeSpendNegative: { color: COLORS.red },
   safeScenarioRow: { flexDirection: 'row', marginTop: 7 },
-  safeSpendDetails: { color: '#E7EAF3', fontSize: 11, lineHeight: 16, fontWeight: '700', marginTop: 8 },
-  safeSpendWarning: { color: '#FFB7BC', fontSize: 11, lineHeight: 16, fontWeight: '800', marginTop: 7 },
-  safeSpendFootnote: { color: '#CFD5E5', fontSize: 10, lineHeight: 15, marginTop: 6 },
-  safeSpendUnavailableTitle: { color: '#FFFFFF', fontSize: 14, fontWeight: '800', marginTop: 8 },
-  monthCard: {
-    backgroundColor: COLORS.card,
-    padding: 15,
-    borderRadius: 17,
-    marginBottom: 13,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    borderLeftWidth: 4,
-    borderLeftColor: COLORS.green,
-  },
-  monthCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 13 },
-  monthTitle: { color: COLORS.ink, fontSize: 18, fontWeight: '900', letterSpacing: -0.3 },
-  monthBadge: { maxWidth: '54%', backgroundColor: COLORS.greenSoft, borderRadius: 9, paddingHorizontal: 9, paddingVertical: 6 },
-  monthSubtitle: { color: COLORS.green, fontSize: 10, lineHeight: 13, fontWeight: '800', textAlign: 'right' },
-  monthBalances: { flexDirection: 'row', alignItems: 'stretch', gap: 9 },
-  openingBalanceBlock: { flex: 0.82, justifyContent: 'center', paddingHorizontal: 2 },
-  closingBalanceBlock: { flex: 1.18, backgroundColor: '#F2F4FF', borderRadius: 13, paddingHorizontal: 12, paddingVertical: 10 },
-  balanceCaption: { color: COLORS.muted, fontSize: 11, fontWeight: '700' },
-  openingBalanceValue: { color: COLORS.ink, fontSize: 16, fontWeight: '800', marginTop: 5 },
-  balanceValue: { color: COLORS.ink, fontSize: 23, lineHeight: 29, fontWeight: '900', letterSpacing: -0.7, marginTop: 3 },
+  safeSpendDetails: { color: COLORS.muted, fontSize: 10, lineHeight: 14, fontWeight: '600', marginTop: 5 },
+  safeSpendWarning: { color: COLORS.red, fontSize: 10, lineHeight: 14, fontWeight: '800', marginTop: 6 },
+  safeSpendFootnote: { color: COLORS.muted, fontSize: 9, lineHeight: 13, marginTop: 5 },
+  safeSpendUnavailableTitle: { color: COLORS.ink, fontSize: 13, fontWeight: '800', marginTop: 6 },
+  monthCard: { backgroundColor: COLORS.card, padding: 15, borderRadius: 20, marginBottom: 13, borderWidth: 1 },
+  currentMonthCard: { backgroundColor: COLORS.card, borderColor: COLORS.green, borderWidth: 2 },
+  nextMonthCard: { backgroundColor: COLORS.card, borderColor: '#C3C9FF' },
+  monthCardHeader: { minHeight: 39, flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  monthCalendarIcon: { width: 35, color: COLORS.green, fontSize: 28, lineHeight: 34, marginRight: 10, textAlign: 'center' },
+  monthHeadingCopy: { flex: 1, minWidth: 0 },
+  monthTitle: { color: COLORS.ink, fontSize: 19, lineHeight: 23, fontWeight: '900', letterSpacing: -0.3 },
+  monthSubtitle: { color: COLORS.muted, fontSize: 12, fontWeight: '700', marginTop: 1 },
+  monthMetricsColumn: { gap: 10 },
+  openingMetric: { minHeight: 43, flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F6FA', borderRadius: 12, paddingHorizontal: 9, paddingVertical: 6, marginBottom: 10 },
+  openingMetricIcon: { width: 31, height: 31, borderRadius: 10, backgroundColor: '#E8ECFF', alignItems: 'center', justifyContent: 'center', marginRight: 9 },
+  openingMetricCopy: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 },
+  openingMetricLabel: { color: COLORS.muted, fontSize: 11, lineHeight: 14, fontWeight: '700' },
+  openingMetricAmount: { color: COLORS.ink, fontSize: 15, lineHeight: 19, fontWeight: '900', flexShrink: 1, textAlign: 'right' },
+  walletGlyph: { color: COLORS.ink, fontSize: 23, lineHeight: 26, fontWeight: '900', marginTop: -4 },
+  flowMetric: { gap: 5, backgroundColor: '#FFFFFF', borderWidth: 1.5, borderRadius: 12, padding: 8 },
+  incomeMetric: { borderColor: '#23834D' },
+  expenseMetric: { borderColor: '#D82C39' },
+  flowMetricHeader: { minHeight: 33, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  flowIcon: { width: 29, height: 29, borderRadius: 10, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  incomeIcon: { backgroundColor: '#D8F9E4' },
+  expenseIcon: { backgroundColor: '#FFE0E2' },
+  flowGlyph: { fontSize: 21, lineHeight: 25, fontWeight: '900' },
+  incomeGlyph: { color: '#11834C' },
+  expenseGlyph: { color: '#D82C39' },
+  flowLabel: { color: COLORS.ink, fontSize: 13, fontWeight: '700', flex: 1 },
+  flowAmount: { color: COLORS.ink, fontSize: 16, lineHeight: 21, fontWeight: '900', letterSpacing: -0.25, textAlign: 'right' },
+  flowBreakdown: { flexDirection: 'row', gap: 5 },
+  closingBalanceBlock: { borderTopWidth: 1, borderTopColor: COLORS.line, marginTop: 10, paddingTop: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 },
+  closingCaption: { color: COLORS.muted, fontSize: 12, lineHeight: 16, fontWeight: '700' },
+  closingValue: { color: COLORS.ink, fontSize: 24, lineHeight: 30, fontWeight: '900', letterSpacing: -0.6, flexShrink: 1, textAlign: 'right' },
   negativeBalance: { color: COLORS.red },
-  summaryDivider: { height: 1, backgroundColor: COLORS.line, marginVertical: 13 },
-  summaryGrid: { flexDirection: 'row', gap: 9 },
-  summaryCell: { flex: 1, minWidth: 0, backgroundColor: '#F7F8FB', borderRadius: 12, padding: 10 },
-  outflowCell: { backgroundColor: '#F5F6F8' },
-  summaryLabel: { color: COLORS.muted, fontSize: 10, fontWeight: '900', letterSpacing: 0.7, textTransform: 'uppercase', marginBottom: 3 },
-  summaryValue: { color: COLORS.ink, fontSize: 15, fontWeight: '900', marginBottom: 4 },
-  summaryBreakdown: { color: COLORS.ink, fontSize: 10, lineHeight: 14, marginTop: 3, flexShrink: 1 },
-  lowestBalance: { minHeight: 47, borderRadius: 12, backgroundColor: '#EEF1F8', marginTop: 11, paddingHorizontal: 10, paddingVertical: 7, flexDirection: 'row', alignItems: 'center' },
-  lowestIcon: { width: 27, height: 27, borderRadius: 9, overflow: 'hidden', backgroundColor: COLORS.green, color: '#FFFFFF', textAlign: 'center', textAlignVertical: 'center', fontSize: 19, fontWeight: '900', marginRight: 9 },
-  lowestCopy: { flex: 1 },
-  lowestText: { color: COLORS.muted, fontSize: 10, fontWeight: '700' },
-  lowestStrong: { color: COLORS.ink, fontSize: 12, fontWeight: '900', marginTop: 2 },
-  negativeNote: { color: COLORS.red, fontSize: 11, fontWeight: '700', marginTop: 7 },
+  summaryBreakdown: { flex: 1, minWidth: 0, backgroundColor: '#F5F6FA', borderRadius: 9, paddingHorizontal: 6, paddingVertical: 3 },
+  summaryBreakdownLabel: { color: COLORS.ink, fontSize: 10, lineHeight: 13, fontWeight: '600' },
+  summaryBreakdownValue: { color: COLORS.ink, fontSize: 10, lineHeight: 14, fontWeight: '800', marginTop: 1 },
+  annualIncomeCard: { backgroundColor: '#FFF1C7', borderRadius: 18, paddingHorizontal: 13, paddingVertical: 12, marginBottom: 13 },
+  annualIncomeTopRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  annualIncomeIcon: { width: 39, height: 39, borderRadius: 13, backgroundColor: COLORS.lime, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  annualIncomeGlyph: { color: COLORS.ink, fontSize: 22, fontWeight: '900' },
+  annualIncomeCopy: { flex: 1, minWidth: 0 },
+  annualIncomeLabel: { color: COLORS.ink, fontSize: 12, fontWeight: '900' },
+  annualIncomeHint: { color: COLORS.muted, fontSize: 9, lineHeight: 12, marginTop: 2 },
+  annualIncomeValue: { color: COLORS.ink, fontSize: 20, lineHeight: 26, fontWeight: '900', textAlign: 'right', marginTop: 8 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, marginBottom: 10 },
   sectionTitle: { color: COLORS.ink, fontSize: 16, fontWeight: '800' },
   sectionAction: { color: COLORS.green, fontSize: 12, fontWeight: '800', paddingVertical: 5, paddingLeft: 10 },

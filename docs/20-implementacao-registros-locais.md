@@ -2,7 +2,7 @@
 
 ## Estado da entrega
 
-Implementação para revisão e validação com dados fictícios. O app é offline, sem backend, acesso bancário ou execução de pagamentos externos. Demonstração e perfil protegido têm armazenamentos separados. A entrega não é um APK homologado nem autorização para inserir dados reais.
+Implementação para revisão e validação com dados fictícios. O app é offline, sem backend, acesso bancário ou execução de pagamentos externos. A interface de produto abre apenas o perfil local protegido; dados sintéticos ficam restritos a verificações isoladas. O perfil novo começa sem movimentos ou categorias e pede os dados da conta informados pelo usuário; a criação também pode ativar a biometria Android no SecureStore, mantendo a senha local como alternativa. A entrega não é um APK homologado nem autorização para inserir dados reais.
 
 As três novas documentações foram consideradas junto às regras vigentes; os arquivos originais foram preservados. O [relatório 19](19-revisao-consistencia.md) documenta a primeira etapa e suas pendências históricas. Este documento descreve a implementação posterior.
 
@@ -39,7 +39,7 @@ A chave aleatória do banco é envelopada por senha; a biometria protege materia
 
 Backup lógico completo usa o provedor nativo OpenSSL de `react-native-quick-crypto`, AES-256-GCM e scrypt. O perfil de protótipo é N=131072/r=8/p=1, limite de memória 256 MiB; precisa de medição em aparelho e revisão. Formato, finalidade, versão e perfil são autenticados/validados; arquivos e payloads têm limite. A senha de recuperação é independente da chave do aparelho. Importação valida antes de confirmar substituição transacional. Seletores podem bloquear a sessão; o host exige novamente a senha antes de mostrar/restaurar o conteúdo selecionado. Compartilhamento usa arquivos temporários e tentativa de remoção ao terminar.
 
-O navegador oferece apenas demonstração. SQLCipher/biometria/backup nativo exigem build próprio; Expo Go não é prova de segurança. A aplicação mantém aviso de validação e dados fictícios.
+O navegador não abre perfis protegidos. O caminho normal no aparelho é criar ou desbloquear o cofre local; a criação inicial não pré-carrega dados financeiros. SQLCipher, biometria e backup exigem build nativo próprio; Expo Go não é prova de segurança. A disponibilidade do fluxo não substitui a POC em aparelho e a revisão humana antes de inserir dados reais.
 
 ## Arquivos principais para revisão
 
@@ -55,7 +55,7 @@ O navegador oferece apenas demonstração. SQLCipher/biometria/backup nativo exi
 
 | Verificação | Resultado e limite |
 |---|---|
-| `npm test` | 133 testes: 97 Node e 36 interface. Positivos, negativos, bordas e regressões; sem testes ignorados. |
+| `npm test` | 141 testes: 99 Node e 42 interface. Positivos, negativos, bordas e regressões; sem testes ignorados. |
 | SQLite sintético | Arquivo real fecha/reabre; FKs/centavos inteiros; falha SQL no meio causa rollback; conflito de revisão não publica dados; migração interrompida pode ser repetida. SQLite comum é laboratório de schema, não armazenamento do app. |
 | Backup em Node | Senha independente, round-trip, vínculos/histórico; senha errada, adulteração, truncamento, formato/KDF/finalidade inválidos recusados. Não testa a biblioteca nativa. |
 | `npm run typecheck` e `npm run lint` | Passaram sem desativar validações. |

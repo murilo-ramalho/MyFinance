@@ -75,11 +75,11 @@ export interface WorkspaceProps {
   onCommand(command: FinanceCommand, context: CommandContext): void;
   selectedOperationId?: string | null;
   onSelectOperation(id: string | null): void;
-  persistent?: boolean;
 }
 
-export function FinanceWorkspace({ book, today, onCommand, selectedOperationId, onSelectOperation, persistent = false }: WorkspaceProps) {
+export function FinanceWorkspace({ book, today, onCommand, selectedOperationId, onSelectOperation }: WorkspaceProps) {
   const [panel, setPanel] = useState<Panel>('operations');
+  const [panelPickerOpen, setPanelPickerOpen] = useState(false);
   const [editor, setEditor] = useState<EditorDefinition | null>(null);
   const [notice, setNotice] = useState('');
   const [csvPreview, setCsvPreview] = useState<CsvPreview | null>(null);
@@ -187,16 +187,55 @@ export function FinanceWorkspace({ book, today, onCommand, selectedOperationId, 
     ], submit: (values) => execute({ kind: 'save-production-cost', cost: { id: costId, title: values.title.trim(), projectId: values.project,
       saleOperationId: values.sale || null, amountMinor: amount(values.amount, true), occurredOn: date(values.date)! } }, request) });
   };
+  const openToolEditor = () => {
+    const request = id('tool');
+    open({ title: 'Ferramenta', note: 'Selecione a compra original. O cadastro não gera outro pagamento.', fields: [{ key: 'name', label: 'Nome da ferramenta' },
+      { key: 'purchase', label: 'Compra de origem', choices: book.operations.filter((entry) => entry.direction === 'expense').map((entry) => ({ value: entry.id, label: entry.title })) },
+      { key: 'extra', label: 'Outros custos atribuídos', value: '0,00' }, { key: 'residual', label: 'Valor residual estimado', value: '0,00' }],
+      submit: (values) => execute({ kind: 'save-tool', tool: { id: request, name: values.name.trim(), operationId: values.purchase,
+        attributedMinor: amount(values.extra, true), residualMinor: amount(values.residual, true), uses: 0 } }, request) });
+  };
   const position = financialPosition(book, today);
+  const selectedPanel = PANELS.find((entry) => entry.key === panel)!;
   return <>
     <Text style={ws.title}>Organizar seus registros</Text>
     <Text style={ws.note}>Tudo é informado por você e calculado localmente.</Text>
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={ws.tabs}>
-      {PANELS.map((entry) => <Pressable accessibilityRole="button" key={entry.key} testID={`workspace-${entry.key}`}
-        accessibilityState={{ selected: panel === entry.key }} onPress={() => { setPanel(entry.key); setNotice(''); }} style={[ws.tab, panel === entry.key && ws.selected]}>
-        <Text style={[ws.tabText, panel === entry.key && ws.selectedText]}>{entry.label}</Text>
-      </Pressable>)}
-    </ScrollView>
+    <Pressable accessibilityRole="button" accessibilityLabel={`Seção atual: ${selectedPanel.label}. Abrir seções.`}
+      accessibilityState={{ expanded: panelPickerOpen }} testID="workspace-panel-picker"
+      onPress={() => setPanelPickerOpen(true)} style={ws.panelPicker}>
+      <View style={ws.panelPickerCopy}>
+        <Text style={ws.panelPickerCaption}>SEÇÃO</Text>
+        <Text style={ws.panelPickerValue}>{selectedPanel.label}</Text>
+      </View>
+      <Text style={ws.panelPickerChevron}>⌄</Text>
+    </Pressable>
+    <Modal visible={panelPickerOpen} transparent animationType="slide" onRequestClose={() => setPanelPickerOpen(false)}
+      statusBarTranslucent testID="workspace-panel-picker-modal">
+      <View style={ws.panelPickerBackdrop}>
+        <Pressable style={ws.panelPickerDismiss} onPress={() => setPanelPickerOpen(false)} accessibilityLabel="Fechar seções" />
+        <View style={ws.panelPickerSheet}>
+          <View style={ws.panelPickerHandle} />
+          <View style={ws.panelPickerSheetHeader}>
+            <View>
+              <Text style={ws.panelPickerCaption}>ORGANIZAR</Text>
+              <Text style={ws.panelPickerSheetTitle}>Escolha uma seção</Text>
+            </View>
+            <Pressable accessibilityRole="button" accessibilityLabel="Fechar seções" testID="workspace-panel-picker-close"
+              onPress={() => setPanelPickerOpen(false)} style={ws.panelPickerClose}>
+              <Text style={ws.panelPickerCloseText}>×</Text>
+            </Pressable>
+          </View>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={ws.panelPickerList}>
+            {PANELS.map((entry) => <Pressable accessibilityRole="button" key={entry.key} testID={`workspace-${entry.key}`}
+              accessibilityState={{ selected: panel === entry.key }} onPress={() => { setPanel(entry.key); setNotice(''); setPanelPickerOpen(false); }}
+              style={[ws.panelPickerOption, panel === entry.key && ws.panelPickerOptionSelected]}>
+              <Text style={[ws.panelPickerOptionText, panel === entry.key && ws.panelPickerOptionTextSelected]}>{entry.label}</Text>
+              {panel === entry.key ? <Text style={ws.panelPickerCheck}>✓</Text> : null}
+            </Pressable>)}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
     {notice ? <Text style={ws.note} testID="workspace-notice">{notice}</Text> : null}
     {panel === 'operations' ? <>
       <Action label="Novo registro com parcelas" testID="workspace-new-operation" onPress={() => openOperation()} />
@@ -374,13 +413,21 @@ export function FinanceWorkspace({ book, today, onCommand, selectedOperationId, 
       <Text style={ws.note}>Dividendos podem ser registrados como receitas previstas ou efetivamente recebidas em Compras e pagamentos, com suas datas. Não são confirmados automaticamente.</Text>
     </> : null}
     {panel === 'tools' ? <>
-      <Action label="Cadastrar ferramenta" onPress={() => { const request = id('tool'); open({ title: 'Ferramenta', note: 'Selecione a compra original. O cadastro não gera outro pagamento.', fields: [{ key: 'name', label: 'Nome da ferramenta' },
-        { key: 'purchase', label: 'Compra de origem', choices: book.operations.filter((entry) => entry.direction === 'expense').map((entry) => ({ value: entry.id, label: entry.title })) },
-        { key: 'extra', label: 'Outros custos atribuídos', value: '0,00' }, { key: 'residual', label: 'Valor residual estimado', value: '0,00' }], submit: (values) => execute({ kind: 'save-tool', tool: { id: request, name: values.name.trim(), operationId: values.purchase,
-          attributedMinor: amount(values.extra, true), residualMinor: amount(values.residual, true), uses: 0 } }, request) }); }} />
-      {book.tools.map((tool) => <Card key={tool.id} title={tool.name}><Text>{tool.uses} usos · {toolCostPerUse(book, tool.id) === null ? 'Custo por uso ainda indefinido' : `${formatBrl(toolCostPerUse(book, tool.id)!)} por uso`}</Text>
-        <Action label={`Registrar uso de ${tool.name}`} onPress={() => { const request = id('tool-use'); open({ title: 'Registrar usos', fields: [{ key: 'count', label: 'Quantidade de novos usos', value: '1' }], submit: (values) => execute({ kind: 'tool-use', toolId: tool.id, count: positiveInteger(values.count) }, request) }); }} />
-      </Card>)}
+      {book.tools.length === 0 ? (
+        <View style={ws.emptyTools} testID="workspace-tools-empty">
+          <View style={ws.emptyToolsIcon}><Text style={ws.emptyToolsGlyph}>⚒</Text></View>
+          <Text style={ws.emptyToolsTitle}>Acompanhe o custo por uso</Text>
+          <Text style={ws.emptyToolsDescription}>Vincule a ferramenta à compra original e informe custos adicionais ou valor residual. Depois, registre os usos para calcular o custo por uso.</Text>
+          <Text style={ws.emptyToolsNote}>O cadastro não gera outro pagamento. O custo por uso fica indefinido até registrar ao menos um uso.</Text>
+          <Action label="Cadastrar ferramenta" onPress={openToolEditor} />
+        </View>
+      ) : <>
+        <Text style={ws.note}>Vincule cada ferramenta à compra original. Registrar usos atualiza o custo por uso sem criar novos pagamentos.</Text>
+        <Action label="Cadastrar ferramenta" onPress={openToolEditor} />
+        {book.tools.map((tool) => <Card key={tool.id} title={tool.name}><Text>{tool.uses} usos · {toolCostPerUse(book, tool.id) === null ? 'Custo por uso ainda indefinido' : `${formatBrl(toolCostPerUse(book, tool.id)!)} por uso`}</Text>
+          <Action label={`Registrar uso de ${tool.name}`} onPress={() => { const request = id('tool-use'); open({ title: 'Registrar usos', fields: [{ key: 'count', label: 'Quantidade de novos usos', value: '1' }], submit: (values) => execute({ kind: 'tool-use', toolId: tool.id, count: positiveInteger(values.count) }, request) }); }} />
+        </Card>)}
+      </>}
     </> : null}
     {panel === 'categories' ? <>
       <Text style={ws.note}>Categoria descreve o motivo do registro. Projeto identifica a atividade. São campos independentes.</Text>
@@ -388,7 +435,7 @@ export function FinanceWorkspace({ book, today, onCommand, selectedOperationId, 
       {book.categories.map((category) => <Card key={category.id} title={category.name}><Action label={`Renomear ${category.name}`} onPress={() => { const request = id('rename-category'); open({ title: 'Editar categoria', fields: [{ key: 'name', label: 'Nome da categoria', value: category.name }], submit: (values) => execute({ kind: 'save-category', category: { ...category, name: values.name.trim() } }, request) }); }} /></Card>)}
     </> : null}
     {panel === 'audit' ? <>
-      <Text style={ws.note}>Cada alteração conserva seus registros anteriores. {persistent ? 'O histórico é salvo no livro local protegido.' : 'Dados desta sessão de demonstração somem ao fechar o app.'}</Text>
+      <Text style={ws.note}>Cada alteração conserva seus registros anteriores. O histórico é salvo no livro local protegido.</Text>
       {book.audit.slice().reverse().map((entry) => <Card key={entry.requestId} title={`Alteração registrada · ${entry.recordedAt}`}>
         <Text style={ws.note}>{entry.reason || 'Sem motivo adicional'} · {entry.changes.length} registros alterados</Text>
         {entry.changes.map((change) => <Text style={ws.note} key={`${change.table}:${change.id}`}>{historyLabels[change.table] ?? 'Registro'}: {historyValue(change.before)} → {historyValue(change.after)}</Text>)}
@@ -471,8 +518,23 @@ export function FinanceWorkspace({ book, today, onCommand, selectedOperationId, 
 
 const ws = StyleSheet.create({
   title: { fontSize: 25, fontWeight: '900', color: '#1B2335', marginBottom: 5, letterSpacing: -0.5 }, note: { color: '#657087', fontSize: 13, lineHeight: 20, marginVertical: 5 },
-  tabs: { gap: 7, paddingVertical: 13 }, tab: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DDE2EC', borderRadius: 11, paddingHorizontal: 13, paddingVertical: 11 }, selected: { backgroundColor: '#F2D65C', borderColor: '#D9BE43' },
-  tabText: { color: '#657087', fontSize: 12, fontWeight: '700' }, selectedText: { color: '#1B2335', fontWeight: '900' },
+  panelPicker: { minHeight: 54, borderRadius: 12, backgroundColor: '#EBEEFF', borderWidth: 1, borderColor: '#D8DEFF', paddingHorizontal: 13, paddingVertical: 8, marginTop: 7, marginBottom: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  panelPickerCopy: { gap: 2 }, panelPickerCaption: { color: '#657087', fontSize: 9, fontWeight: '800', letterSpacing: 1 },
+  panelPickerValue: { color: '#1B2335', fontSize: 14, fontWeight: '800' }, panelPickerChevron: { color: '#334BD2', fontSize: 22, fontWeight: '700', paddingHorizontal: 4 },
+  panelPickerBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(17, 27, 49, 0.48)' }, panelPickerDismiss: { flex: 1 },
+  panelPickerSheet: { maxHeight: '82%', backgroundColor: '#F3F5F9', borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingHorizontal: 18, paddingTop: 10, paddingBottom: 18 },
+  panelPickerHandle: { alignSelf: 'center', width: 36, height: 4, borderRadius: 3, backgroundColor: '#C8CEDA', marginBottom: 14 },
+  panelPickerSheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 12 },
+  panelPickerSheetTitle: { color: '#1B2335', fontSize: 20, fontWeight: '900', marginTop: 3 },
+  panelPickerClose: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  panelPickerCloseText: { color: '#657087', fontSize: 23, lineHeight: 25 }, panelPickerList: { gap: 5, paddingBottom: 8 },
+  panelPickerOption: { minHeight: 46, borderRadius: 11, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DDE2EC', paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  panelPickerOptionSelected: { backgroundColor: '#FFF5C7', borderColor: '#F0D754' }, panelPickerOptionText: { color: '#47536C', fontSize: 13, fontWeight: '700' },
+  panelPickerOptionTextSelected: { color: '#1B2335', fontWeight: '900' }, panelPickerCheck: { color: '#334BD2', fontSize: 16, fontWeight: '900' },
+  emptyTools: { borderRadius: 17, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DDE2EC', padding: 17, marginTop: 7, gap: 9 },
+  emptyToolsIcon: { width: 46, height: 46, borderRadius: 14, backgroundColor: '#FFF5C7', alignItems: 'center', justifyContent: 'center' },
+  emptyToolsGlyph: { color: '#1B2335', fontSize: 25 }, emptyToolsTitle: { color: '#1B2335', fontSize: 17, fontWeight: '900', marginTop: 2 },
+  emptyToolsDescription: { color: '#47536C', fontSize: 13, lineHeight: 19 }, emptyToolsNote: { color: '#657087', fontSize: 11, lineHeight: 16 },
   card: { borderRadius: 15, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DDE2EC', padding: 15, marginVertical: 7, gap: 7 }, cardTitle: { color: '#1B2335', fontSize: 17, fontWeight: '800' },
   action: { borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#EBEEFF', borderWidth: 1, borderColor: '#D8DEFF', marginVertical: 4 }, actionText: { color: '#334BD2', fontWeight: '800' },
   part: { borderTopWidth: 1, borderColor: '#DDE2EC', paddingTop: 10, marginTop: 5, gap: 5 },
