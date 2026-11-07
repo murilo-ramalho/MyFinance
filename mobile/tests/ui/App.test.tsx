@@ -23,6 +23,7 @@ describe('app movement journeys', () => {
   async function openNewMovementForm(): Promise<void> {
     await tap('add-movement-button');
     await fireEvent(screen.getByTestId('movement-form-modal'), 'show');
+    await tap('movement-details-toggle');
   }
 
   async function openMovement(id: string): Promise<void> {
@@ -40,6 +41,25 @@ describe('app movement journeys', () => {
     expect(screen.getByTestId('realized-inflow-2026-10').props.children).toEqual(['Realizadas ', formatBrl(420000)]);
     expect(screen.getByTestId('committed-outflow-2026-10').props.children).toEqual(['Compromissos ', formatBrl(23000)]);
     expect(screen.getByTestId('forecast-outflow-2026-10').props.children).toEqual(['Previsões ', formatBrl(42000)]);
+  });
+
+  test('starts manual entry with the spreadsheet fields visible and summarizes optional details', async () => {
+    await tap('tab-movements');
+    await tap('add-movement-button');
+    await fireEvent(screen.getByTestId('movement-form-modal'), 'show');
+
+    expect(within(screen.getByTestId('movement-form-modal')).getByText('Tipo de movimento')).toBeTruthy();
+    expect(screen.getByLabelText('Data do fato')).toBeTruthy();
+    expect(screen.getByLabelText('Valor em reais')).toBeTruthy();
+    expect(screen.getByLabelText('Descrição')).toBeTruthy();
+    expect(screen.getByText('Natureza do registro')).toBeTruthy();
+    expect(screen.getByLabelText('Data do pagamento/recebimento')).toBeTruthy();
+    expect(screen.getByText(/^Digital · Conta:/)).toBeTruthy();
+    expect(screen.queryByText('Projeto (opcional)')).toBeNull();
+
+    await tap('movement-details-toggle');
+    expect(screen.getByText('Projeto')).toBeTruthy();
+    expect(screen.queryByText(/^Digital · Conta:/)).toBeNull();
   });
 
   test('shows a conservative safe-spend estimate and lets the user compare the expected scenario', async () => {
@@ -170,6 +190,18 @@ describe('app movement journeys', () => {
     expect(screen.getByTestId('movement-money-digital').props.accessibilityState.selected).toBe(true);
     expect(screen.getByTestId('movement-card-none').props.accessibilityState.selected).toBe(false);
     expect(screen.getByTestId('movement-card-demo-card').props.accessibilityState.selected).toBe(true);
+  });
+
+  test('uses the money type as the receipt type for income', async () => {
+    await tap('tab-movements');
+    await openNewMovementForm();
+    await tap('movement-option-entrada');
+
+    const form = within(screen.getByTestId('movement-form-modal'));
+    expect(form.getByTestId('movement-money-digital')).toBeTruthy();
+    expect(form.queryByText('Meio de recebimento')).toBeNull();
+    expect(form.queryByText('Forma de pagamento')).toBeNull();
+    expect(form.queryByTestId('movement-card-none')).toBeNull();
   });
 
   test('loads and preserves project tags when editing an existing movement', async () => {

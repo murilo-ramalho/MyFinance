@@ -193,7 +193,9 @@ export function FinanceWorkspace({ book, today, onCommand, selectedOperationId, 
     <Text style={ws.note}>Tudo é informado por você e calculado localmente.</Text>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={ws.tabs}>
       {PANELS.map((entry) => <Pressable accessibilityRole="button" key={entry.key} testID={`workspace-${entry.key}`}
-        accessibilityState={{ selected: panel === entry.key }} onPress={() => { setPanel(entry.key); setNotice(''); }} style={[ws.tab, panel === entry.key && ws.selected]}><Text>{entry.label}</Text></Pressable>)}
+        accessibilityState={{ selected: panel === entry.key }} onPress={() => { setPanel(entry.key); setNotice(''); }} style={[ws.tab, panel === entry.key && ws.selected]}>
+        <Text style={[ws.tabText, panel === entry.key && ws.selectedText]}>{entry.label}</Text>
+      </Pressable>)}
     </ScrollView>
     {notice ? <Text style={ws.note} testID="workspace-notice">{notice}</Text> : null}
     {panel === 'operations' ? <>
@@ -468,11 +470,12 @@ export function FinanceWorkspace({ book, today, onCommand, selectedOperationId, 
 }
 
 const ws = StyleSheet.create({
-  title: { fontSize: 24, fontWeight: '700', color: '#182A24', marginBottom: 10 }, note: { color: '#586B60', fontSize: 13, lineHeight: 20, marginVertical: 5 },
-  tabs: { gap: 8, paddingVertical: 15 }, tab: { backgroundColor: '#FFF', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12 }, selected: { backgroundColor: '#D8F27A' },
-  card: { borderRadius: 16, backgroundColor: '#FFF', padding: 16, marginVertical: 8, gap: 7 }, cardTitle: { color: '#182A24', fontSize: 17, fontWeight: '700' },
-  action: { borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#E7F0E9', marginVertical: 4 }, actionText: { color: '#214B3D', fontWeight: '600' },
-  part: { borderTopWidth: 1, borderColor: '#E5E8E1', paddingTop: 10, marginTop: 5, gap: 5 },
-  backdrop: { flex: 1, backgroundColor: '#0007', justifyContent: 'flex-end' }, detailSheet: { maxHeight: '94%', backgroundColor: '#F4F3ED', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
+  title: { fontSize: 25, fontWeight: '900', color: '#1B2335', marginBottom: 5, letterSpacing: -0.5 }, note: { color: '#657087', fontSize: 13, lineHeight: 20, marginVertical: 5 },
+  tabs: { gap: 7, paddingVertical: 13 }, tab: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DDE2EC', borderRadius: 11, paddingHorizontal: 13, paddingVertical: 11 }, selected: { backgroundColor: '#F2D65C', borderColor: '#D9BE43' },
+  tabText: { color: '#657087', fontSize: 12, fontWeight: '700' }, selectedText: { color: '#1B2335', fontWeight: '900' },
+  card: { borderRadius: 15, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DDE2EC', padding: 15, marginVertical: 7, gap: 7 }, cardTitle: { color: '#1B2335', fontSize: 17, fontWeight: '800' },
+  action: { borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: '#EBEEFF', borderWidth: 1, borderColor: '#D8DEFF', marginVertical: 4 }, actionText: { color: '#334BD2', fontWeight: '800' },
+  part: { borderTopWidth: 1, borderColor: '#DDE2EC', paddingTop: 10, marginTop: 5, gap: 5 },
+  backdrop: { flex: 1, backgroundColor: 'rgba(17, 27, 49, 0.58)', justifyContent: 'flex-end' }, detailSheet: { maxHeight: '94%', backgroundColor: '#F3F5F9', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
   detailContent: { padding: 20, paddingBottom: 40 },
 });

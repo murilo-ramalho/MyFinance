@@ -106,6 +106,7 @@ describe('manual financial record journeys', () => {
   test('observed fact and payment times remain distinct and unknown times are not replaced by midnight', async () => {
     await tap('tab-movements'); await tap('add-movement-button');
     await fireEvent(screen.getByTestId('movement-form-modal'), 'show');
+    await tap('movement-details-toggle');
     expect(screen.getByLabelText('Hora do fato, opcional').props.value).toBe('');
     await enter('Descrição', 'Horários conhecidos'); await enter('Valor em reais', '10,00');
     await enter('Hora do fato, opcional', '14:35'); await enter('Hora do pagamento, opcional', '15:10'); await tap('movement-save-button');

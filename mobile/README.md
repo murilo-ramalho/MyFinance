@@ -37,7 +37,7 @@ npm run bundle:android
 npm run bundle:web
 ```
 
-São 97 testes Node de domínio/aplicação/persistência/backup/CSV e 36 testes de interface. A suíte usa SQLite real apenas com dados sintéticos para testar schema, FKs e transações; a criptografia de testes usa o provedor Node, e a interface simula os serviços nativos. Nenhum desses testes substitui a prova do provedor nativo.
+São 97 testes Node de domínio/aplicação/persistência/backup/CSV e 38 testes de interface (135 no total). A suíte usa SQLite real apenas com dados sintéticos para testar schema, FKs e transações; a criptografia de testes usa o provedor Node, e a interface simula os serviços nativos. Nenhum desses testes substitui a prova do provedor nativo.
 
 Os fluxos `.maestro/` incluem a escolha explícita de demonstração e a prova nativa com bancos sintéticos isolados. `npm run test:e2e` exige Maestro, SDK e APK instalado; **não executado neste ambiente**. Não executar fluxos com `clearState` sobre perfil com dados que se deseja conservar.
 

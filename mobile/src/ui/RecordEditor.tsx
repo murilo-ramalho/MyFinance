@@ -48,7 +48,7 @@ export function RecordEditor({ definition, onClose }: { definition: EditorDefini
                     accessibilityState={{ selected: values[field.key] === choice.value }} disabled={field.readOnly || busy}
                     onPress={() => setValues((current) => ({ ...current, [field.key]: choice.value }))}
                     style={[editorStyles.choice, values[field.key] === choice.value && editorStyles.selected]}>
-                    <Text>{choice.label}</Text>
+                    <Text style={[editorStyles.choiceText, values[field.key] === choice.value && editorStyles.selectedChoiceText]}>{choice.label}</Text>
                   </Pressable>
                 ))}</View> : <TextInput accessibilityLabel={field.label} value={values[field.key]}
                   secureTextEntry={field.secret} autoCapitalize={field.secret ? 'none' : 'sentences'}
@@ -64,7 +64,7 @@ export function RecordEditor({ definition, onClose }: { definition: EditorDefini
               <Text style={editorStyles.saveText}>{busy ? 'Aguarde…' : definition.submitLabel ?? 'Salvar registro'}</Text>
             </Pressable>
             <Pressable accessibilityRole="button" testID="record-editor-close" disabled={busy} onPress={onClose} style={editorStyles.close}>
-              <Text>Voltar</Text>
+              <Text style={editorStyles.closeText}>Voltar</Text>
             </Pressable>
           </ScrollView>
         </View>
@@ -74,14 +74,15 @@ export function RecordEditor({ definition, onClose }: { definition: EditorDefini
 }
 
 const editorStyles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: '#0007', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#F4F3ED', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '94%', padding: 20 },
-  title: { color: '#182A24', fontWeight: '700', fontSize: 22, marginBottom: 16 },
-  content: { paddingBottom: 30, gap: 16 }, field: { gap: 8 }, label: { color: '#182A24', fontWeight: '600' },
-  input: { backgroundColor: 'white', borderWidth: 1, borderColor: '#DDE4DC', padding: 12, borderRadius: 12, color: '#182A24' },
-  readOnly: { backgroundColor: '#E8EBE5' }, choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  choice: { paddingHorizontal: 12, paddingVertical: 10, backgroundColor: 'white', borderRadius: 12, borderWidth: 1, borderColor: '#DDE4DC' },
-  selected: { backgroundColor: '#D8F27A', borderColor: '#214B3D' }, hint: { color: '#586B60', fontSize: 12, lineHeight: 18 },
-  save: { backgroundColor: '#214B3D', borderRadius: 12, padding: 15, alignItems: 'center' }, saveText: { color: 'white', fontWeight: '600' },
-  close: { padding: 12, alignItems: 'center' }, error: { color: '#A63838', lineHeight: 20 },
+  backdrop: { flex: 1, backgroundColor: 'rgba(17, 27, 49, 0.58)', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: '#F3F5F9', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '94%', padding: 20 },
+  title: { color: '#1B2335', fontWeight: '900', fontSize: 23, marginBottom: 16, letterSpacing: -0.4 },
+  content: { paddingBottom: 30, gap: 16 }, field: { gap: 8 }, label: { color: '#1B2335', fontWeight: '800' },
+  input: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DDE2EC', padding: 12, borderRadius: 11, color: '#1B2335' },
+  readOnly: { backgroundColor: '#E9ECF3' }, choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  choice: { paddingHorizontal: 12, paddingVertical: 10, backgroundColor: '#FFFFFF', borderRadius: 11, borderWidth: 1, borderColor: '#DDE2EC' },
+  choiceText: { color: '#657087', fontWeight: '700' }, selected: { backgroundColor: '#F2D65C', borderColor: '#3D59E8' }, selectedChoiceText: { color: '#1B2335', fontWeight: '900' },
+  hint: { color: '#657087', fontSize: 12, lineHeight: 18 },
+  save: { backgroundColor: '#3D59E8', borderRadius: 12, padding: 15, alignItems: 'center' }, saveText: { color: 'white', fontWeight: '800' },
+  close: { padding: 12, alignItems: 'center' }, closeText: { color: '#657087', fontWeight: '700' }, error: { color: '#B53B4B', lineHeight: 20 },
 });

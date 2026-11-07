@@ -52,15 +52,15 @@ type DirectionFilter = 'all' | MovementDirection;
 type SortOrder = 'newest' | 'oldest';
 
 const COLORS = {
-  background: '#F4F3ED',
+  background: '#F3F5F9',
   card: '#FFFFFF',
-  ink: '#182A24',
-  muted: '#718078',
-  line: '#E5E8E1',
-  green: '#214B3D',
-  greenSoft: '#E7F0E9',
-  lime: '#D8F27A',
-  red: '#A63838',
+  ink: '#1B2335',
+  muted: '#657087',
+  line: '#DDE2EC',
+  green: '#3D59E8',
+  greenSoft: '#EBEEFF',
+  lime: '#F2D65C',
+  red: '#B53B4B',
 };
 
 function monthLabel(month: YearMonth): string {
@@ -199,49 +199,68 @@ function MonthCard({
       <View style={styles.monthCardHeader}>
         <View>
           <Text style={styles.monthTitle}>{monthLabel(summary.month)}</Text>
-          <Text style={styles.monthSubtitle}>{subtitle}</Text>
         </View>
-        <View style={styles.monthIcon}><Text style={styles.monthIconText}>↗</Text></View>
+        <View style={styles.monthBadge}><Text style={styles.monthSubtitle}>{subtitle}</Text></View>
       </View>
 
-      <Text style={styles.balanceCaption}>Saldo previsto no fechamento</Text>
-      <Text
-        testID={`closing-balance-${summary.month}`}
-        style={[styles.balanceValue, balanceIsNegative && styles.negativeBalance]}
-      >
-        {formatBrl(summary.closingBalanceMinor)}
-      </Text>
+      <View style={styles.monthBalances}>
+        <View style={styles.openingBalanceBlock}>
+          <Text style={styles.balanceCaption}>Abertura</Text>
+          <Text style={[styles.openingBalanceValue, summary.openingBalanceMinor < 0 && styles.negativeBalance]} numberOfLines={1} adjustsFontSizeToFit>
+            {formatBrl(summary.openingBalanceMinor)}
+          </Text>
+        </View>
+        <View style={styles.closingBalanceBlock}>
+          <Text style={styles.balanceCaption}>Fechamento previsto</Text>
+          <Text
+            testID={`closing-balance-${summary.month}`}
+            style={[styles.balanceValue, balanceIsNegative && styles.negativeBalance]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
+            {formatBrl(summary.closingBalanceMinor)}
+          </Text>
+        </View>
+      </View>
 
       <View style={styles.summaryDivider} />
       <View style={styles.summaryGrid}>
         <View style={styles.summaryCell}>
           <Text style={styles.summaryLabel}>Entradas</Text>
-          <Text style={styles.summaryValue}>{formatBrl(summary.inflowMinor)}</Text>
-          <Text style={styles.summaryBreakdown} testID={`realized-inflow-${summary.month}`}>Realizadas {formatBrl(summary.realizedInflowMinor)}</Text>
-          <Text style={styles.summaryBreakdown} testID={`committed-inflow-${summary.month}`}>Compromissos {formatBrl(summary.committedInflowMinor)}</Text>
-          <Text style={styles.summaryBreakdown} testID={`forecast-inflow-${summary.month}`}>Previsões {formatBrl(summary.forecastInflowMinor)}</Text>
+          <Text style={styles.summaryValue}>+{formatBrl(summary.inflowMinor)}</Text>
+          <SummaryLine label="Realizadas " value={summary.realizedInflowMinor} testID={`realized-inflow-${summary.month}`} />
+          <SummaryLine label="Compromissos " value={summary.committedInflowMinor} testID={`committed-inflow-${summary.month}`} />
+          <SummaryLine label="Previsões " value={summary.forecastInflowMinor} testID={`forecast-inflow-${summary.month}`} />
         </View>
-        <View style={styles.summaryCell}>
+        <View style={[styles.summaryCell, styles.outflowCell]}>
           <Text style={styles.summaryLabel}>Saídas</Text>
           <Text style={styles.summaryValue}>−{formatBrl(summary.outflowMinor)}</Text>
-          <Text style={styles.summaryBreakdown} testID={`realized-outflow-${summary.month}`}>Realizadas {formatBrl(summary.realizedOutflowMinor)}</Text>
-          <Text style={styles.summaryBreakdown} testID={`committed-outflow-${summary.month}`}>Compromissos {formatBrl(summary.committedOutflowMinor)}</Text>
-          <Text style={styles.summaryBreakdown} testID={`forecast-outflow-${summary.month}`}>Previsões {formatBrl(summary.forecastOutflowMinor)}</Text>
+          <SummaryLine label="Realizadas " value={summary.realizedOutflowMinor} testID={`realized-outflow-${summary.month}`} />
+          <SummaryLine label="Compromissos " value={summary.committedOutflowMinor} testID={`committed-outflow-${summary.month}`} />
+          <SummaryLine label="Previsões " value={summary.forecastOutflowMinor} testID={`forecast-outflow-${summary.month}`} />
         </View>
       </View>
 
       <View style={styles.lowestBalance}>
-        <Text style={styles.lowestIcon}>⌁</Text>
-        <Text style={styles.lowestText}>
-          Menor saldo: <Text style={styles.lowestStrong}>{formatBrl(summary.lowestBalanceMinor)}</Text>
-          {' · '}{formatBrazilianDate(summary.lowestBalanceOn)}
-          {summary.lowestBalanceTime ? ` ${summary.lowestBalanceTime}` : null}
-        </Text>
+        <Text style={styles.lowestIcon}>↓</Text>
+        <View style={styles.lowestCopy}>
+          <Text style={styles.lowestText}>Menor saldo diário</Text>
+          <Text style={[styles.lowestStrong, summary.lowestBalanceMinor < 0 && styles.negativeBalance]}>
+            {formatBrl(summary.lowestBalanceMinor)} · {formatBrazilianDate(summary.lowestBalanceOn)}
+            {summary.lowestBalanceTime ? ` ${summary.lowestBalanceTime}` : ''}
+          </Text>
+        </View>
       </View>
       {summary.lowestBalanceMinor < 0 ? (
         <Text style={styles.negativeNote}>A projeção fica negativa em parte do mês.</Text>
       ) : null}
     </View>
+  );
+}
+
+function SummaryLine({ label, value, testID }: { label: string; value: number; testID: string }) {
+  return (
+    <Text style={styles.summaryBreakdown} numberOfLines={1} adjustsFontSizeToFit testID={testID}>{label}{formatBrl(value)}</Text>
   );
 }
 
@@ -606,6 +625,13 @@ export default function App({ store: suppliedStore, protectedSession = false, on
                     <Text style={styles.compactBalanceFoot} testID={`movement-summary-outflow-${selectedMonth}`}>
                       Saídas: realizadas {formatBrl(selectedSummary.realizedOutflowMinor)} · compromissos {formatBrl(selectedSummary.committedOutflowMinor)} · previsões {formatBrl(selectedSummary.forecastOutflowMinor)}
                     </Text>
+                    <Text
+                      style={[styles.compactBalanceFoot, styles.compactBalanceMinimum, selectedSummary.lowestBalanceMinor < 0 && styles.negativeBalance]}
+                      testID={`movement-minimum-balance-${selectedMonth}`}
+                    >
+                      Menor saldo diário: {formatBrl(selectedSummary.lowestBalanceMinor)} · {formatBrazilianDate(selectedSummary.lowestBalanceOn)}
+                      {selectedSummary.lowestBalanceTime ? ` ${selectedSummary.lowestBalanceTime}` : ''}
+                    </Text>
                   </View>
                 </View>
               ) : (
@@ -640,7 +666,7 @@ export default function App({ store: suppliedStore, protectedSession = false, on
                     value={searchText}
                     onChangeText={setSearchText}
                     placeholder="Buscar descrição"
-                    placeholderTextColor="#8C9891"
+                    placeholderTextColor="#758198"
                     autoCapitalize="none"
                     style={[styles.input, styles.searchInput]}
                     maxLength={80}
@@ -907,7 +933,7 @@ function TabButton({
       accessibilityRole="tab"
       testID={`tab-${label === 'Início' ? 'home' : label === 'Movimentações' ? 'movements' : label === 'Organizar' ? 'workspace' : 'views'}`}
       accessibilityState={{ selected: active }}
-      style={styles.tabButton}
+      style={[styles.tabButton, active && styles.tabButtonActive]}
     >
       <Text style={[styles.tabGlyph, active && styles.tabGlyphActive]}>{glyph}</Text>
       <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{label}</Text>
@@ -968,6 +994,7 @@ function MovementForm({
   const [occurredTime, setOccurredTime] = useState('');
   const [settledTime, setSettledTime] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
 
   const loadFormValues = () => {
     if (movement) {
@@ -985,6 +1012,7 @@ function MovementForm({
       setAccountId(movement.accountId ?? accounts.find((account) => account.kind === 'cash' && account.moneyType === movement.moneyType)?.id);
       setCategoryId(movement.categoryId ?? null);
       setOccurredTime(movement.occurredTime ?? ''); setSettledTime(movement.settledTime ?? '');
+      setDetailsExpanded(true);
     } else {
       const todayText = formatBrazilianDate(today);
       setTitle('');
@@ -999,6 +1027,7 @@ function MovementForm({
       setAccountId(accounts.find((account) => account.kind === 'cash' && account.moneyType === 'digital')?.id);
       setCategoryId(null);
       setOccurredTime(''); setSettledTime('');
+      setDetailsExpanded(false);
     }
     setError(null);
   };
@@ -1054,6 +1083,17 @@ function MovementForm({
   const cashFieldLabel = cardId !== null
     ? 'Data prevista para pagar a fatura'
     : isRealized ? 'Data do pagamento/recebimento' : 'Data prevista para o caixa';
+  const selectedAccount = accounts.find((account) => account.id === accountId);
+  const selectedCard = cards.find((card) => card.id === cardId);
+  const selectedProject = projects.find((project) => project.id === projectId);
+  const selectedCategory = categories.find((category) => category.id === categoryId);
+  const detailsSummary = [
+    moneyType === 'digital' ? 'Digital' : 'Físico',
+    `Conta: ${selectedAccount?.name ?? 'não selecionada'}`,
+    selectedCard ? `Crédito · ${selectedCard.name}` : direction === 'expense' ? moneyType === 'digital' ? 'Débito' : 'Em espécie' : null,
+    selectedProject ? `Projeto: ${selectedProject.name}` : null,
+    selectedCategory ? `Categoria: ${selectedCategory.name}` : null,
+  ].filter(Boolean).join(' · ');
 
   return (
     <Modal
@@ -1067,15 +1107,15 @@ function MovementForm({
     >
       <KeyboardAvoidingView
         style={styles.modalBackdrop}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <Pressable style={styles.modalDismissArea} onPress={onClose} accessibilityLabel="Fechar formulário" />
         <View style={styles.formSheet}>
           <View style={styles.formHandle} />
           <View style={styles.formHeader}>
             <View>
-              <Text style={styles.formEyebrow}>{movement ? 'EDITAR LANÇAMENTO DE TESTE' : 'NOVO LANÇAMENTO DE TESTE'}</Text>
-              <Text style={styles.formTitle}>{movement ? 'Ajustar lançamento' : 'O que aconteceu?'}</Text>
+              <Text style={styles.formEyebrow}>{movement ? 'MOVIMENTAÇÃO' : 'REGISTRO MANUAL'}</Text>
+              <Text style={styles.formTitle}>{movement ? 'Editar registro' : 'Novo registro'}</Text>
             </View>
             <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Fechar">
               <Text style={styles.closeButton}>×</Text>
@@ -1083,14 +1123,45 @@ function MovementForm({
           </View>
 
           <ScrollView
+            style={styles.formBody}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.formScroll}
           >
-            <View style={styles.segmentRow}>
-              <SegmentButton label="Despesa" active={direction === 'expense'} onPress={() => setDirection('expense')} />
-              <SegmentButton label="Entrada" active={direction === 'income'} onPress={() => { setDirection('income'); setCardId(null); }} />
-            </View>
+            <Field label="Tipo de movimento">
+              <View style={styles.segmentRow}>
+                <SegmentButton label="Despesa" testID="movement-option-despesa" active={direction === 'expense'} onPress={() => setDirection('expense')} />
+                <SegmentButton label="Receita" testID="movement-option-entrada" active={direction === 'income'} onPress={() => { setDirection('income'); setCardId(null); }} />
+              </View>
+            </Field>
+
+            <Field label={eventFieldLabel} hint="Data do fato ou da expectativa · DD/MM/AAAA">
+              <TextInput
+                accessibilityLabel={eventFieldLabel}
+                testID="movement-event-date-input"
+                value={eventDateText}
+                onChangeText={setEventDateText}
+                placeholder="DD/MM/AAAA"
+                placeholderTextColor="#758198"
+                keyboardType="default"
+                style={styles.input}
+                maxLength={10}
+              />
+            </Field>
+
+            <Field label="Valor" hint="Em reais (R$)">
+              <TextInput
+                accessibilityLabel="Valor em reais"
+                testID="movement-amount-input"
+                value={amountText}
+                onChangeText={setAmountText}
+                placeholder="0,00"
+                placeholderTextColor="#758198"
+                keyboardType="decimal-pad"
+                style={styles.input}
+                maxLength={18}
+              />
+            </Field>
 
             <Field label="Descrição">
               <TextInput
@@ -1098,57 +1169,15 @@ function MovementForm({
                 testID="movement-title-input"
                 value={title}
                 onChangeText={setTitle}
-                placeholder="Ex.: Mercado de teste"
-                placeholderTextColor="#8C9891"
+                placeholder="Ex.: Mercado"
+                placeholderTextColor="#758198"
                 style={styles.input}
                 maxLength={80}
                 returnKeyType="next"
               />
             </Field>
 
-            <Field label="Valor em reais">
-              <TextInput
-                accessibilityLabel="Valor em reais"
-                testID="movement-amount-input"
-                value={amountText}
-                onChangeText={setAmountText}
-                placeholder="0,00"
-                placeholderTextColor="#8C9891"
-                keyboardType="decimal-pad"
-                style={styles.input}
-                maxLength={18}
-              />
-            </Field>
-
-            <Field label={eventFieldLabel} hint="DD/MM/AAAA">
-              <TextInput
-                accessibilityLabel={eventFieldLabel}
-                testID="movement-event-date-input"
-                value={eventDateText}
-                onChangeText={setEventDateText}
-                placeholder="DD/MM/AAAA"
-                placeholderTextColor="#8C9891"
-                keyboardType="default"
-                style={styles.input}
-                maxLength={10}
-              />
-            </Field>
-
-            <Field label={cashFieldLabel} hint="Pode ser diferente da data da compra">
-              <TextInput
-                accessibilityLabel={cashFieldLabel}
-                testID="movement-cash-date-input"
-                value={cashDateText}
-                onChangeText={setCashDateText}
-                placeholder="DD/MM/AAAA"
-                placeholderTextColor="#8C9891"
-                keyboardType="default"
-                style={styles.input}
-                maxLength={10}
-              />
-            </Field>
-
-            <Field label="Como classificar?">
+            <Field label="Natureza do registro" hint="Fato, compromisso ou previsão">
               <View style={styles.segmentRow}>
                 <SegmentButton label="Realizado" active={nature === 'realized'} onPress={() => setNature('realized')} />
                 <SegmentButton label="Compromisso" active={nature === 'commitment'} onPress={() => setNature('commitment')} />
@@ -1156,75 +1185,107 @@ function MovementForm({
               </View>
             </Field>
 
-            {isRealized || movement?.occurredOn ? <Field label="Hora do fato, opcional" hint="HH:MM. Deixe vazia quando não souber.">
-              <TextInput accessibilityLabel="Hora do fato, opcional" value={occurredTime} onChangeText={setOccurredTime} maxLength={5} style={styles.input} />
-            </Field> : null}
-            {isRealized ? <Field label="Hora do pagamento, opcional" hint="Não é preenchida automaticamente.">
-              <TextInput accessibilityLabel="Hora do pagamento, opcional" value={settledTime} onChangeText={setSettledTime} maxLength={5} style={styles.input} />
-            </Field> : null}
-
-            <Field label="Tipo de dinheiro">
-              <View style={styles.formChipRow}>
-                <FilterChip label="Digital" selected={moneyType === 'digital'} testID="movement-money-digital" onPress={() => setMoneyType('digital')} />
-                <FilterChip label="Físico" selected={moneyType === 'physical'} testID="movement-money-physical" onPress={() => { setMoneyType('physical'); setCardId(null); }} />
-              </View>
-              <Text style={styles.formFootnote}>Investimentos são patrimônio e não entram como caixa neste formulário.</Text>
+            <Field label={cashFieldLabel} hint="Data do caixa, que pode diferir da data do fato.">
+              <TextInput
+                accessibilityLabel={cashFieldLabel}
+                testID="movement-cash-date-input"
+                value={cashDateText}
+                onChangeText={setCashDateText}
+                placeholder="DD/MM/AAAA"
+                placeholderTextColor="#758198"
+                keyboardType="default"
+                style={styles.input}
+                maxLength={10}
+              />
             </Field>
 
-            <Field label="Projeto (opcional)">
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.formChipRow}>
-                <FilterChip label="Sem projeto" selected={projectId === null} testID="movement-project-none" onPress={() => setProjectId(null)} />
-                {projects.map((project) => (
-                  <FilterChip key={project.id} label={project.name} selected={projectId === project.id} testID={`movement-project-${project.id}`} onPress={() => setProjectId(project.id)} />
-                ))}
-              </ScrollView>
-            </Field>
+            <View style={styles.detailsCard}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={detailsExpanded ? 'Ocultar detalhes do registro' : 'Editar detalhes do registro'}
+                accessibilityState={{ expanded: detailsExpanded }}
+                testID="movement-details-toggle"
+                onPress={() => setDetailsExpanded((expanded) => !expanded)}
+                style={styles.detailsToggle}
+              >
+                <View style={styles.detailsCopy}>
+                  <Text style={styles.detailsTitle}>{detailsExpanded ? 'Detalhes do registro' : 'Mais detalhes'}</Text>
+                  {!detailsExpanded ? <Text style={styles.detailsSummary}>{detailsSummary}</Text> : null}
+                </View>
+                <Text style={styles.detailsToggleText}>{detailsExpanded ? 'Ocultar' : 'Editar'}</Text>
+              </Pressable>
 
-            <Field label="Conta">
-              <View style={styles.formChipRow}>{accounts.filter((account) => account.kind === 'cash' && account.moneyType === moneyType).map((account) => (
-                <FilterChip key={account.id} label={account.name} selected={accountId === account.id} testID={`movement-account-${account.id}`} onPress={() => setAccountId(account.id)} />
-              ))}</View>
-            </Field>
-            <Field label="Categoria (opcional)">
-              <View style={styles.formChipRow}>
-                <FilterChip label="Sem categoria" selected={categoryId === null} testID="movement-category-none" onPress={() => setCategoryId(null)} />
-                {categories.map((category) => <FilterChip key={category.id} label={category.name} selected={categoryId === category.id} testID={`movement-category-${category.id}`} onPress={() => setCategoryId(category.id)} />)}
-              </View>
-            </Field>
+              {detailsExpanded ? (
+                <View style={styles.detailsContent}>
+                  {isRealized || movement?.occurredOn ? <Field label="Hora do fato, opcional" hint="HH:MM. Deixe vazia quando não souber.">
+                    <TextInput accessibilityLabel="Hora do fato, opcional" value={occurredTime} onChangeText={setOccurredTime} maxLength={5} style={styles.input} />
+                  </Field> : null}
+                  {isRealized ? <Field label="Hora do pagamento, opcional" hint="Não é preenchida automaticamente.">
+                    <TextInput accessibilityLabel="Hora do pagamento, opcional" value={settledTime} onChangeText={setSettledTime} maxLength={5} style={styles.input} />
+                  </Field> : null}
 
-            <Field label={direction === 'expense' ? 'Forma de pagamento' : 'Meio de recebimento'}>
-              <View style={styles.formChipRow}>
-                <FilterChip
-                  label={direction === 'expense'
-                    ? moneyType === 'digital' ? 'Débito' : 'Dinheiro físico'
-                    : moneyType === 'digital' ? 'Digital' : 'Dinheiro físico'}
-                  selected={cardId === null}
-                  testID="movement-card-none"
-                  onPress={() => setCardId(null)}
-                />
-                {direction === 'expense' ? cards.map((card) => (
-                  <FilterChip key={card.id} label={`Crédito · ${card.name}`} selected={cardId === card.id} testID={`movement-card-${card.id}`} onPress={() => { setCardId(card.id); setMoneyType('digital'); setNature('commitment'); }} />
-                )) : null}
-              </View>
-              {direction === 'expense' ? (
-                <Text style={styles.formFootnote}>
-                  Sem cartão em despesa digital = débito; cartão selecionado = crédito. Dinheiro físico fica separado.
-                  {cardId !== null ? ' A data da compra e a data prevista para o caixa ficam separadas.' : ''}
-                </Text>
+                  <Field label="Tipo de dinheiro">
+                    <View style={styles.formChipRow}>
+                      <FilterChip label="Digital" selected={moneyType === 'digital'} testID="movement-money-digital" onPress={() => setMoneyType('digital')} />
+                      <FilterChip label="Físico" selected={moneyType === 'physical'} testID="movement-money-physical" onPress={() => { setMoneyType('physical'); setCardId(null); }} />
+                    </View>
+                    <Text style={styles.formFootnote}>Investimentos são patrimônio e não entram como caixa neste formulário.</Text>
+                  </Field>
+
+                  <Field label="Conta">
+                    <View style={styles.formChipRow}>{accounts.filter((account) => account.kind === 'cash' && account.moneyType === moneyType).map((account) => (
+                      <FilterChip key={account.id} label={account.name} selected={accountId === account.id} testID={`movement-account-${account.id}`} onPress={() => setAccountId(account.id)} />
+                    ))}</View>
+                  </Field>
+
+                  {direction === 'expense' ? <Field label="Forma de pagamento">
+                    <View style={styles.formChipRow}>
+                      <FilterChip
+                        label={moneyType === 'digital' ? 'Débito' : 'Dinheiro físico'}
+                        selected={cardId === null}
+                        testID="movement-card-none"
+                        onPress={() => setCardId(null)}
+                      />
+                      {cards.map((card) => (
+                        <FilterChip key={card.id} label={`Crédito · ${card.name}`} selected={cardId === card.id} testID={`movement-card-${card.id}`} onPress={() => { setCardId(card.id); setMoneyType('digital'); setNature('commitment'); }} />
+                      ))}
+                    </View>
+                    <Text style={styles.formFootnote}>
+                      Sem cartão em despesa digital = débito; cartão selecionado = crédito. Dinheiro físico fica separado.
+                      {cardId !== null ? ' A data da compra e a data prevista para o caixa ficam separadas.' : ''}
+                    </Text>
+                  </Field> : null}
+
+                  <Field label="Projeto">
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.formChipRow}>
+                      <FilterChip label="Sem projeto" selected={projectId === null} testID="movement-project-none" onPress={() => setProjectId(null)} />
+                      {projects.map((project) => (
+                        <FilterChip key={project.id} label={project.name} selected={projectId === project.id} testID={`movement-project-${project.id}`} onPress={() => setProjectId(project.id)} />
+                      ))}
+                    </ScrollView>
+                  </Field>
+
+                  <Field label="Categoria">
+                    <View style={styles.formChipRow}>
+                      <FilterChip label="Sem categoria" selected={categoryId === null} testID="movement-category-none" onPress={() => setCategoryId(null)} />
+                      {categories.map((category) => <FilterChip key={category.id} label={category.name} selected={categoryId === category.id} testID={`movement-category-${category.id}`} onPress={() => setCategoryId(category.id)} />)}
+                    </View>
+                  </Field>
+                </View>
               ) : null}
-            </Field>
-
-            {error ? <Text style={styles.formError} accessibilityRole="alert">{error}</Text> : null}
+            </View>
 
             {onActions ? <Pressable accessibilityRole="button" testID="movement-actions" onPress={() => { try { onActions(); } catch (failure) { setError(failure instanceof Error ? failure.message : 'Não foi possível abrir as ações.'); } }} style={styles.sortButton}><Text>Pagamentos, parcelas e reembolsos</Text></Pressable> : null}
-
+          </ScrollView>
+          <View style={styles.formFooter}>
+            {error ? <Text style={styles.formError} accessibilityRole="alert">{error}</Text> : null}
             <Pressable style={styles.saveButton} onPress={save} accessibilityRole="button" testID="movement-save-button">
-              <Text style={styles.saveButtonText}>{movement ? 'Salvar alteração de teste' : 'Adicionar aos dados de teste'}</Text>
+              <Text style={styles.saveButtonText}>{movement ? 'Salvar alteração' : 'Salvar registro'}</Text>
             </Pressable>
             <Text style={styles.formFootnote}>
               {isDemo ? 'Este lançamento fica apenas na memória e desaparece ao fechar o app.' : 'Este registro é salvo neste aparelho, protegido pela chave local.'}
             </Text>
-          </ScrollView>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -1312,7 +1373,7 @@ function ProjectForm({
                 value={name}
                 onChangeText={setName}
                 placeholder="Ex.: Reforma da cozinha"
-                placeholderTextColor="#8C9891"
+                placeholderTextColor="#758198"
                 style={styles.input}
                 maxLength={60}
                 returnKeyType="next"
@@ -1351,10 +1412,12 @@ function ProjectForm({
 
 function SegmentButton({
   label,
+  testID,
   active,
   onPress,
 }: {
   label: string;
+  testID?: string;
   active: boolean;
   onPress: () => void;
 }) {
@@ -1363,7 +1426,7 @@ function SegmentButton({
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
-      testID={`movement-option-${label.toLowerCase().replaceAll(' ', '-')}`}
+      testID={testID ?? `movement-option-${label.toLowerCase().replaceAll(' ', '-')}`}
       style={[styles.segmentButton, active && styles.segmentButtonActive]}
     >
       <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{label}</Text>
@@ -1403,7 +1466,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  brand: { color: COLORS.ink, fontSize: 20, fontWeight: '900', letterSpacing: 2.2 },
+  brand: { color: COLORS.ink, fontSize: 21, fontWeight: '900', letterSpacing: 0.1 },
   brandSub: { color: COLORS.muted, fontSize: 9, fontWeight: '700', letterSpacing: 1.3, marginTop: 2 },
   addButton: {
     width: 44,
@@ -1420,7 +1483,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 13,
     height: 34,
     borderRadius: 11,
-    backgroundColor: COLORS.greenSoft,
+    backgroundColor: '#FFF5D8',
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -1430,46 +1493,50 @@ const styles = StyleSheet.create({
   eyebrow: { color: COLORS.green, fontSize: 10, fontWeight: '900', letterSpacing: 1.7, marginBottom: 7 },
   pageTitle: { color: COLORS.ink, fontSize: 27, lineHeight: 33, fontWeight: '800', letterSpacing: -0.8 },
   pageLead: { color: COLORS.muted, fontSize: 14, lineHeight: 20, marginTop: 5, marginBottom: 19 },
-  safeSpendCard: { backgroundColor: COLORS.greenSoft, padding: 17, borderRadius: 20, marginBottom: 13, borderWidth: 1, borderColor: '#D4E1D6' },
-  safeSpendEyebrow: { color: COLORS.green, fontSize: 9, fontWeight: '900', letterSpacing: 1.2 },
-  safeSpendHorizon: { color: COLORS.muted, fontSize: 11, fontWeight: '600', marginTop: 4 },
-  safeSpendAmount: { color: COLORS.green, fontSize: 32, lineHeight: 39, fontWeight: '900', letterSpacing: -0.8, marginTop: 2 },
-  safeSpendNegative: { color: COLORS.red },
+  safeSpendCard: { backgroundColor: '#17223D', padding: 18, borderRadius: 18, marginBottom: 13, borderWidth: 1, borderColor: '#17223D' },
+  safeSpendEyebrow: { color: '#D9E0FF', fontSize: 10, fontWeight: '900', letterSpacing: 1.2 },
+  safeSpendHorizon: { color: '#C3CBE2', fontSize: 12, fontWeight: '600', marginTop: 5 },
+  safeSpendAmount: { color: '#FFFFFF', fontSize: 34, lineHeight: 42, fontWeight: '900', letterSpacing: -0.8, marginTop: 2 },
+  safeSpendNegative: { color: '#FFB7BC' },
   safeScenarioRow: { flexDirection: 'row', marginTop: 7 },
-  safeSpendDetails: { color: COLORS.ink, fontSize: 10, lineHeight: 15, fontWeight: '700', marginTop: 7 },
-  safeSpendWarning: { color: COLORS.red, fontSize: 10, lineHeight: 15, fontWeight: '800', marginTop: 6 },
-  safeSpendFootnote: { color: COLORS.muted, fontSize: 9, lineHeight: 14, marginTop: 5 },
-  safeSpendUnavailableTitle: { color: COLORS.ink, fontSize: 14, fontWeight: '800', marginTop: 8 },
+  safeSpendDetails: { color: '#E7EAF3', fontSize: 11, lineHeight: 16, fontWeight: '700', marginTop: 8 },
+  safeSpendWarning: { color: '#FFB7BC', fontSize: 11, lineHeight: 16, fontWeight: '800', marginTop: 7 },
+  safeSpendFootnote: { color: '#CFD5E5', fontSize: 10, lineHeight: 15, marginTop: 6 },
+  safeSpendUnavailableTitle: { color: '#FFFFFF', fontSize: 14, fontWeight: '800', marginTop: 8 },
   monthCard: {
-    backgroundColor: COLORS.green,
-    padding: 19,
-    borderRadius: 23,
+    backgroundColor: COLORS.card,
+    padding: 15,
+    borderRadius: 17,
     marginBottom: 13,
-    shadowColor: '#152D24',
-    shadowOpacity: 0.09,
-    shadowRadius: 13,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: COLORS.line,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.green,
   },
-  monthCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 17 },
-  monthTitle: { color: '#F5F8F2', fontSize: 17, fontWeight: '800' },
-  monthSubtitle: { color: '#B9CEC2', fontSize: 11, marginTop: 3 },
-  monthIcon: { width: 36, height: 36, borderRadius: 13, backgroundColor: '#366251', alignItems: 'center', justifyContent: 'center' },
-  monthIconText: { color: COLORS.lime, fontSize: 20, fontWeight: '800' },
-  balanceCaption: { color: '#C5D8CD', fontSize: 11, fontWeight: '600' },
-  balanceValue: { color: '#FFFFFF', fontSize: 32, lineHeight: 41, fontWeight: '800', letterSpacing: -1.1, marginTop: 3 },
-  negativeBalance: { color: '#FFB3A9' },
-  summaryDivider: { height: 1, backgroundColor: '#406757', marginVertical: 15 },
-  summaryGrid: { flexDirection: 'row' },
-  summaryCell: { flex: 1 },
-  summaryLabel: { color: '#BED1C6', fontSize: 11, marginBottom: 5 },
-  summaryValue: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
-  summaryBreakdown: { color: '#D6E3DC', fontSize: 9, lineHeight: 14, marginTop: 3 },
-  lowestBalance: { minHeight: 32, borderRadius: 10, backgroundColor: '#2B5747', marginTop: 15, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center' },
-  lowestIcon: { color: COLORS.lime, fontSize: 20, marginRight: 6 },
-  lowestText: { color: '#DCE9E1', fontSize: 10, flexShrink: 1 },
-  lowestStrong: { color: '#FFFFFF', fontWeight: '800' },
-  negativeNote: { color: '#FFD1CB', fontSize: 11, marginTop: 8 },
+  monthCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 13 },
+  monthTitle: { color: COLORS.ink, fontSize: 18, fontWeight: '900', letterSpacing: -0.3 },
+  monthBadge: { maxWidth: '54%', backgroundColor: COLORS.greenSoft, borderRadius: 9, paddingHorizontal: 9, paddingVertical: 6 },
+  monthSubtitle: { color: COLORS.green, fontSize: 10, lineHeight: 13, fontWeight: '800', textAlign: 'right' },
+  monthBalances: { flexDirection: 'row', alignItems: 'stretch', gap: 9 },
+  openingBalanceBlock: { flex: 0.82, justifyContent: 'center', paddingHorizontal: 2 },
+  closingBalanceBlock: { flex: 1.18, backgroundColor: '#F2F4FF', borderRadius: 13, paddingHorizontal: 12, paddingVertical: 10 },
+  balanceCaption: { color: COLORS.muted, fontSize: 11, fontWeight: '700' },
+  openingBalanceValue: { color: COLORS.ink, fontSize: 16, fontWeight: '800', marginTop: 5 },
+  balanceValue: { color: COLORS.ink, fontSize: 23, lineHeight: 29, fontWeight: '900', letterSpacing: -0.7, marginTop: 3 },
+  negativeBalance: { color: COLORS.red },
+  summaryDivider: { height: 1, backgroundColor: COLORS.line, marginVertical: 13 },
+  summaryGrid: { flexDirection: 'row', gap: 9 },
+  summaryCell: { flex: 1, minWidth: 0, backgroundColor: '#F7F8FB', borderRadius: 12, padding: 10 },
+  outflowCell: { backgroundColor: '#F5F6F8' },
+  summaryLabel: { color: COLORS.muted, fontSize: 10, fontWeight: '900', letterSpacing: 0.7, textTransform: 'uppercase', marginBottom: 3 },
+  summaryValue: { color: COLORS.ink, fontSize: 15, fontWeight: '900', marginBottom: 4 },
+  summaryBreakdown: { color: COLORS.ink, fontSize: 10, lineHeight: 14, marginTop: 3, flexShrink: 1 },
+  lowestBalance: { minHeight: 47, borderRadius: 12, backgroundColor: '#EEF1F8', marginTop: 11, paddingHorizontal: 10, paddingVertical: 7, flexDirection: 'row', alignItems: 'center' },
+  lowestIcon: { width: 27, height: 27, borderRadius: 9, overflow: 'hidden', backgroundColor: COLORS.green, color: '#FFFFFF', textAlign: 'center', textAlignVertical: 'center', fontSize: 19, fontWeight: '900', marginRight: 9 },
+  lowestCopy: { flex: 1 },
+  lowestText: { color: COLORS.muted, fontSize: 10, fontWeight: '700' },
+  lowestStrong: { color: COLORS.ink, fontSize: 12, fontWeight: '900', marginTop: 2 },
+  negativeNote: { color: COLORS.red, fontSize: 11, fontWeight: '700', marginTop: 7 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, marginBottom: 10 },
   sectionTitle: { color: COLORS.ink, fontSize: 16, fontWeight: '800' },
   sectionAction: { color: COLORS.green, fontSize: 12, fontWeight: '800', paddingVertical: 5, paddingLeft: 10 },
@@ -1485,26 +1552,27 @@ const styles = StyleSheet.create({
   expenseAmount: { color: COLORS.ink },
   primaryButton: { minHeight: 52, borderRadius: 17, backgroundColor: COLORS.lime, marginTop: 14, alignItems: 'center', justifyContent: 'center' },
   primaryButtonText: { color: COLORS.ink, fontSize: 13, fontWeight: '800' },
-  monthNavigation: { minHeight: 48, flexDirection: 'row', alignItems: 'center', backgroundColor: '#E9EBE4', borderRadius: 15, padding: 4, marginBottom: 8 },
+  monthNavigation: { minHeight: 48, flexDirection: 'row', alignItems: 'center', backgroundColor: '#E8EBF5', borderRadius: 13, padding: 4, marginBottom: 8 },
   monthNavigationButton: { width: 40, height: 39, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   monthNavigationArrow: { color: COLORS.green, fontSize: 26, lineHeight: 30, fontWeight: '600' },
   monthNavigationLabel: { flex: 1, color: COLORS.ink, fontSize: 13, fontWeight: '800', textAlign: 'center' },
-  monthQuickPicker: { flexDirection: 'row', backgroundColor: '#E9EBE4', borderRadius: 15, padding: 4, marginBottom: 13 },
+  monthQuickPicker: { flexDirection: 'row', backgroundColor: '#E8EBF5', borderRadius: 13, padding: 4, marginBottom: 13 },
   monthPickerItem: { minHeight: 39, flex: 1, borderRadius: 11, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
-  monthPickerItemActive: { backgroundColor: COLORS.card, shadowColor: '#13251D', shadowOpacity: 0.06, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
+  monthPickerItemActive: { backgroundColor: COLORS.card, shadowColor: '#18223A', shadowOpacity: 0.07, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
   monthPickerText: { color: COLORS.muted, fontSize: 11, fontWeight: '700' },
   monthPickerTextActive: { color: COLORS.ink },
   compactBalance: { backgroundColor: COLORS.card, borderRadius: 18, borderWidth: 1, borderColor: COLORS.line, padding: 16 },
   compactBalanceLabel: { color: COLORS.muted, fontSize: 11, fontWeight: '600' },
   compactBalanceValue: { color: COLORS.green, fontSize: 26, fontWeight: '800', letterSpacing: -0.7, marginTop: 4 },
   compactBalanceFoot: { color: COLORS.muted, fontSize: 10, lineHeight: 16, marginTop: 7 },
+  compactBalanceMinimum: { color: COLORS.ink, fontWeight: '800' },
   compactBreakdown: { marginTop: 3 },
   portfolioTabs: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 4, marginBottom: 10 },
   portfolioCard: { backgroundColor: COLORS.card, borderRadius: 19, borderWidth: 1, borderColor: COLORS.line, padding: 15, marginBottom: 11 },
   portfolioGroup: { marginTop: 14 },
   portfolioGroupTitle: { color: COLORS.ink, fontSize: 14, fontWeight: '800', marginBottom: 6 },
   portfolioDescription: { color: COLORS.muted, fontSize: 11, lineHeight: 16, marginTop: 5 },
-  projectFlowSummary: { backgroundColor: '#F5F7F2', borderRadius: 14, padding: 12, marginTop: 12, marginBottom: 12 },
+  projectFlowSummary: { backgroundColor: '#F2F4F9', borderRadius: 14, padding: 12, marginTop: 12, marginBottom: 12 },
   projectFlowHeading: { color: COLORS.ink, fontSize: 11, fontWeight: '800', marginBottom: 4 },
   projectFlowLine: { minHeight: 43, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: COLORS.line, paddingVertical: 6 },
   projectFlowCopy: { flex: 1, marginRight: 8 },
@@ -1522,8 +1590,8 @@ const styles = StyleSheet.create({
   movementFilters: { marginTop: 14 },
   filterLabel: { color: COLORS.muted, fontSize: 10, fontWeight: '800', marginBottom: 6 },
   filterChipRow: { paddingBottom: 8, paddingRight: 4 },
-  filterChip: { minHeight: 33, borderRadius: 11, borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.card, paddingHorizontal: 11, marginRight: 7, alignItems: 'center', justifyContent: 'center' },
-  filterChipActive: { backgroundColor: COLORS.greenSoft, borderColor: '#C4D8CA' },
+  filterChip: { minHeight: 40, borderRadius: 11, borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.card, paddingHorizontal: 11, marginRight: 7, alignItems: 'center', justifyContent: 'center' },
+  filterChipActive: { backgroundColor: COLORS.greenSoft, borderColor: '#AEBBFF' },
   filterChipText: { color: COLORS.muted, fontSize: 10, fontWeight: '700' },
   filterChipTextActive: { color: COLORS.green, fontWeight: '800' },
   searchAndSort: { flexDirection: 'row', alignItems: 'center', marginTop: 3 },
@@ -1535,35 +1603,45 @@ const styles = StyleSheet.create({
   emptyCard: { padding: 20, borderRadius: 18, backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.line, alignItems: 'center' },
   emptyTitle: { color: COLORS.ink, fontWeight: '800', fontSize: 15 },
   emptyText: { color: COLORS.muted, fontSize: 12, lineHeight: 18, textAlign: 'center', marginTop: 5 },
-  bottomBar: { height: 70, backgroundColor: COLORS.card, borderTopColor: COLORS.line, borderTopWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', paddingBottom: Platform.OS === 'android' ? 2 : 0 },
-  tabButton: { flex: 1, minWidth: 90, minHeight: 57, alignItems: 'center', justifyContent: 'center' },
-  tabGlyph: { color: '#8B9890', fontSize: 20, lineHeight: 23, fontWeight: '700' },
-  tabGlyphActive: { color: COLORS.green },
-  tabLabel: { color: '#8B9890', fontSize: 10, fontWeight: '600', marginTop: 2 },
-  tabLabelActive: { color: COLORS.green, fontWeight: '800' },
-  modalBackdrop: { flex: 1, backgroundColor: 'rgba(11, 24, 19, 0.48)', justifyContent: 'flex-end' },
+  bottomBar: { minHeight: 74, backgroundColor: '#17223D', borderTopColor: '#17223D', borderTopWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', paddingHorizontal: 8, paddingBottom: Platform.OS === 'android' ? 2 : 0 },
+  tabButton: { flex: 1, minWidth: 0, minHeight: 56, marginHorizontal: 3, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  tabButtonActive: { backgroundColor: COLORS.lime },
+  tabGlyph: { color: '#C2CBE1', fontSize: 20, lineHeight: 23, fontWeight: '700' },
+  tabGlyphActive: { color: '#17223D' },
+  tabLabel: { color: '#C2CBE1', fontSize: 10, fontWeight: '600', marginTop: 2 },
+  tabLabelActive: { color: '#17223D', fontWeight: '900' },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(17, 27, 49, 0.58)', justifyContent: 'flex-end' },
   modalDismissArea: { flex: 1 },
-  formSheet: { maxHeight: '93%', backgroundColor: COLORS.background, borderTopLeftRadius: 25, borderTopRightRadius: 25, paddingTop: 9, paddingHorizontal: 20 },
-  formHandle: { alignSelf: 'center', width: 37, height: 4, borderRadius: 2, backgroundColor: '#C6CEC6', marginBottom: 14 },
-  formHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
+  formSheet: { maxHeight: '94%', backgroundColor: COLORS.background, borderTopLeftRadius: 25, borderTopRightRadius: 25, paddingTop: 9, paddingHorizontal: 18 },
+  formHandle: { alignSelf: 'center', width: 37, height: 4, borderRadius: 2, backgroundColor: '#C9CFDB', marginBottom: 12 },
+  formHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   formEyebrow: { color: COLORS.green, fontSize: 9, fontWeight: '900', letterSpacing: 1.2 },
   formTitle: { color: COLORS.ink, fontSize: 22, fontWeight: '800', marginTop: 3 },
   closeButton: { color: COLORS.muted, fontSize: 28, paddingHorizontal: 5 },
-  formScroll: { paddingBottom: 22 },
+  formBody: { flexShrink: 1 },
+  formScroll: { paddingBottom: 14 },
+  formFooter: { paddingTop: 10, paddingBottom: Platform.OS === 'ios' ? 16 : 12, borderTopWidth: 1, borderTopColor: COLORS.line, backgroundColor: COLORS.background },
+  detailsCard: { marginTop: 14, borderRadius: 14, backgroundColor: '#EBEEF6', borderWidth: 1, borderColor: COLORS.line, overflow: 'hidden' },
+  detailsToggle: { minHeight: 58, paddingHorizontal: 13, paddingVertical: 10, flexDirection: 'row', alignItems: 'center' },
+  detailsCopy: { flex: 1, marginRight: 10 },
+  detailsTitle: { color: COLORS.ink, fontSize: 13, fontWeight: '900' },
+  detailsSummary: { color: COLORS.muted, fontSize: 11, lineHeight: 16, marginTop: 4 },
+  detailsToggleText: { color: COLORS.green, fontSize: 10, fontWeight: '900' },
+  detailsContent: { paddingHorizontal: 12, paddingBottom: 12, borderTopWidth: 1, borderTopColor: COLORS.line },
   segmentRow: { flexDirection: 'row', gap: 7 },
-  segmentButton: { flex: 1, minHeight: 39, borderRadius: 12, borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.card, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 5 },
+  segmentButton: { flex: 1, minHeight: 44, borderRadius: 12, borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.card, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 5 },
   segmentButtonActive: { borderColor: COLORS.green, backgroundColor: COLORS.green },
   segmentText: { color: COLORS.muted, fontSize: 11, fontWeight: '700' },
   segmentTextActive: { color: '#FFFFFF' },
   formChipRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', paddingVertical: 2 },
-  field: { marginTop: 13 },
+  field: { marginTop: 11 },
   fieldHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
-  fieldLabel: { color: COLORS.ink, fontSize: 11, fontWeight: '800' },
-  fieldHint: { color: COLORS.muted, fontSize: 9 },
+  fieldLabel: { color: COLORS.ink, fontSize: 12, fontWeight: '800' },
+  fieldHint: { color: COLORS.muted, fontSize: 10 },
   input: { minHeight: 45, borderRadius: 12, borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.card, paddingHorizontal: 12, color: COLORS.ink, fontSize: 14 },
   projectDescriptionInput: { minHeight: 92, paddingTop: 11 },
-  formError: { color: COLORS.red, fontSize: 12, marginTop: 12 },
-  saveButton: { minHeight: 50, borderRadius: 15, backgroundColor: COLORS.green, alignItems: 'center', justifyContent: 'center', marginTop: 18 },
+  formError: { color: COLORS.red, fontSize: 12, marginBottom: 8 },
+  saveButton: { minHeight: 52, borderRadius: 15, backgroundColor: COLORS.green, alignItems: 'center', justifyContent: 'center', marginTop: 0 },
   saveButtonText: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
-  formFootnote: { color: COLORS.muted, fontSize: 10, lineHeight: 15, textAlign: 'center', marginTop: 9, marginBottom: 4 },
+  formFootnote: { color: COLORS.muted, fontSize: 10, lineHeight: 15, textAlign: 'center', marginTop: 7, marginBottom: 0 },
 });
